@@ -16,14 +16,12 @@ export default async function handler(req, res) {
   const filter = { _id: new ObjectId(id), userId: user.id };
 
   if (req.method === 'PUT') {
-    const { name, icon, color, type, smart, smartDefaults } = req.body;
+    const { name, icon, color, type } = req.body;
     const update = { updatedAt: new Date() };
-    if (name !== undefined) update.name = name.trim();
-    if (icon !== undefined) update.icon = icon;
-    if (color !== undefined) update.color = color;
-    if (type !== undefined) update.type = type;
-    if (smart !== undefined) update.smart = smart;
-    if (smartDefaults !== undefined) update.smartDefaults = smartDefaults;
+    if (name) update.name = name.trim();
+    if (icon) update.icon = icon;
+    if (color) update.color = color;
+    if (type) update.type = type;
 
     const result = await col.findOneAndUpdate(filter, { $set: update }, { returnDocument: 'after' });
     if (!result) return res.status(404).json({ error: 'Categoria não encontrada.' });

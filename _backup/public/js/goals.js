@@ -6,7 +6,6 @@ const Goals = {
   editingId: null,
   selectedColor: GOAL_COLORS[0],
   selectedIcon:  GOAL_ICONS[0],
-  openDepositId: null,
 
   async load() {
     try {
@@ -35,39 +34,26 @@ const Goals = {
   },
 
   _goalCard(g) {
-    const pct  = Utils.pct(g.currentAmount, g.targetAmount);
+    const pct = Utils.pct(g.currentAmount, g.targetAmount);
     const days = Utils.daysLeft(g.deadline);
     const done = pct >= 100;
-    const remaining = Math.max(0, g.targetAmount - g.currentAmount);
-
-    const deposits = (g.deposits || []).slice(-5).reverse();
-    const depositHistory = deposits.length
-      ? deposits.map(d => `
-          <div class="deposit-entry">
-            <span class="deposit-amount">+ ${Utils.formatCurrency(d.amount)}</span>
-            <span class="deposit-note">${d.note || '—'}</span>
-            <span class="deposit-date">${Utils.formatDate(d.date)}</span>
-          </div>`).join('')
-      : '<div class="text-muted text-sm" style="padding:6px 0">Nenhum depósito ainda.</div>';
-
-    return `<div class="goal-card" id="goal-card-${g._id}">
+    return `<div class="goal-card">
       <div class="goal-header">
-        <div class="flex gap-2" style="align-items:flex-start">
-          <div class="goal-icon-wrap" style="background:${g.color}22">${g.icon}</div>
-          <div>
-            <div class="goal-name">${g.name} ${done ? '🏆' : ''}</div>
-            ${g.deadline ? `<div class="goal-deadline">
-              ${days !== null ? (days > 0 ? `${days} dias restantes` : '<span style="color:var(--red)">Prazo encerrado</span>') : ''}
-              · ${Utils.formatDate(g.deadline)}
-            </div>` : ''}
+        <div>
+          <div class="flex gap-2" style="align-items:center;margin-bottom:4px">
+            <div class="goal-icon-wrap" style="background:${g.color}22">${g.icon}</div>
+            <div>
+              <div class="goal-name">${g.name}</div>
+              ${g.deadline ? `<div class="goal-deadline">${days !== null ? (days > 0 ? `${days} dias restantes` : 'Prazo encerrado') : ''} · ${Utils.formatDate(g.deadline)}</div>` : ''}
+            </div>
           </div>
         </div>
         <div class="flex gap-2">
-          <button class="icon-btn" onclick="Goals.openEdit('${g._id}')" title="Editar">✏️</button>
-          <button class="icon-btn danger" onclick="Goals.delete('${g._id}')" title="Excluir">🗑️</button>
+          ${done ? '<span style="font-size:1.2rem">🏆</span>' : ''}
+          <button class="icon-btn" onclick="Goals.openEdit('${g._id}')">✏️</button>
+          <button class="icon-btn danger" onclick="Goals.delete('${g._id}')">🗑️</button>
         </div>
       </div>
-
       <div class="goal-progress-bar">
         <div class="goal-progress-fill" style="width:${pct}%;background:linear-gradient(90deg,${g.color},${g.color}99)"></div>
       </div>
@@ -76,63 +62,10 @@ const Goals = {
         <span class="goal-pct">${pct}%</span>
         <span class="goal-target">${Utils.formatCurrency(g.targetAmount)}</span>
       </div>
-
-      ${!done ? `<div class="mt-1 text-sm text-muted" style="text-align:center">
-        Faltam <strong style="color:${g.color}">${Utils.formatCurrency(remaining)}</strong>
-      </div>` : `<div class="mt-1 text-sm" style="text-align:center;color:var(--green);font-weight:700">✓ Meta atingida!</div>`}
-
-      <button class="btn btn-secondary btn-sm btn-full mt-2"
-        onclick="Goals.toggleDeposit('${g._id}')"
-        id="btn-deposit-${g._id}">
-        💰 Adicionar valor
-      </button>
-
-      <div class="goal-deposit-panel" id="deposit-panel-${g._id}">
-        <div style="font-size:0.8rem;font-weight:700;margin-bottom:10px;color:var(--text-secondary)">NOVO DEPÓSITO</div>
-        <div class="form-row" style="margin-bottom:8px">
-          <div>
-            <label class="form-label">Valor (R$)</label>
-            <input type="number" class="form-input" id="dep-amount-${g._id}" placeholder="0,00" min="0.01" step="0.01" />
-          </div>
-          <div>
-            <label class="form-label">Observação</label>
-            <input type="text" class="form-input" id="dep-note-${g._id}" placeholder="Opcional" />
-          </div>
-        </div>
-        <button class="btn btn-primary btn-sm btn-full" onclick="Goals.saveDeposit('${g._id}')">Confirmar depósito</button>
-
-        ${deposits.length ? `
-        <div class="divider" style="margin:12px 0 8px"></div>
-        <div style="font-size:0.75rem;font-weight:700;color:var(--text-muted);margin-bottom:6px">ÚLTIMOS DEPÓSITOS</div>
-        <div class="deposit-history">${depositHistory}</div>
-        ` : ''}
+      <div class="mt-2">
+        <button class="btn btn-secondary btn-sm btn-full" onclick="Goals.openDeposit('${g._id}')">+ Adicionar valor</button>
       </div>
     </div>`;
-  },
-
-  toggleDeposit(id) {
-    const panel = document.getElementById(`deposit-panel-${id}`);
-    panel.classList.toggle('open');
-    const btn = document.getElementById(`btn-deposit-${id}`);
-    btn.textContent = panel.classList.contains('open') ? '✕ Fechar' : '💰 Adicionar valor';
-  },
-
-  async saveDeposit(id) {
-    const amountEl = document.getElementById(`dep-amount-${id}`);
-    const noteEl   = document.getElementById(`dep-note-${id}`);
-    const amount = parseFloat(amountEl.value);
-    if (!amount || amount <= 0) { Utils.toast('Informe um valor válido.', 'error'); return; }
-
-    try {
-      await API.updateGoal(id, { deposit: { amount, note: noteEl.value } });
-      Utils.toast('Depósito registrado!', 'success');
-      amountEl.value = '';
-      noteEl.value = '';
-      await this.load();
-      this.render();
-    } catch (err) {
-      Utils.toast(err.message, 'error');
-    }
   },
 
   openCreate() {
@@ -160,13 +93,21 @@ const Goals = {
     Modal.open('modal-goal');
   },
 
+  openDeposit(id) {
+    const g = Store.get('goals').find(x => x._id === id);
+    if (!g) return;
+    const val = prompt(`Quanto deseja adicionar à meta "${g.name}"?\nValor atual: ${Utils.formatCurrency(g.currentAmount)}`);
+    if (!val || isNaN(val) || Number(val) <= 0) return;
+    API.updateGoal(id, { currentAmount: g.currentAmount + Number(val) })
+      .then(() => { Utils.toast('Valor adicionado!', 'success'); this.load().then(() => this.render()); })
+      .catch(err => Utils.toast(err.message, 'error'));
+  },
+
   _renderPickers() {
     document.getElementById('goal-color-picker').innerHTML =
       GOAL_COLORS.map(c => `<div class="color-dot${c === this.selectedColor ? ' selected' : ''}" style="background:${c}" onclick="Goals.selectColor('${c}')"></div>`).join('');
     document.getElementById('goal-icon-picker').innerHTML =
-      GOAL_ICONS.map(i => `<button type="button" class="icon-btn${i === this.selectedIcon ? ' active' : ''}"
-        style="${i === this.selectedIcon ? 'background:var(--blue-dim);color:var(--blue)' : ''}"
-        onclick="Goals.selectIcon('${i}')">${i}</button>`).join('');
+      GOAL_ICONS.map(i => `<button type="button" class="icon-btn${i === this.selectedIcon ? ' active' : ''}" style="${i === this.selectedIcon ? 'background:var(--blue-dim);color:var(--blue)' : ''}" onclick="Goals.selectIcon('${i}')">${i}</button>`).join('');
   },
 
   selectColor(c) { this.selectedColor = c; this._renderPickers(); },

@@ -6,7 +6,6 @@ const Categories = {
   editingId: null,
   selectedColor: COLORS[0],
   selectedIcon: ICONS[0],
-  isSmart: false,
 
   async load() {
     try {
@@ -22,38 +21,36 @@ const Categories = {
     if (!container) return;
     const cats = Store.get('categories');
 
-    const normal = cats.filter(c => !c.smart);
-    const smart  = cats.filter(c => c.smart);
-    const income  = normal.filter(c => c.type === 'income');
-    const expense = normal.filter(c => c.type === 'expense');
+    if (!cats.length) {
+      container.innerHTML = `<div class="empty-state">
+        <div class="empty-icon">🏷️</div>
+        <div class="empty-title">Nenhuma categoria ainda</div>
+        <div class="empty-sub">Crie categorias para organizar suas transações.</div>
+      </div>`;
+      return;
+    }
+
+    const income  = cats.filter(c => c.type === 'income');
+    const expense = cats.filter(c => c.type === 'expense');
 
     container.innerHTML = `
       <div class="mb-4">
         <div class="section-header"><span class="section-title">💚 Receitas</span></div>
         <div class="categories-grid">${income.map(c => this._catCard(c)).join('') || '<p class="text-muted text-sm">Nenhuma</p>'}</div>
       </div>
-      <div class="mb-4">
+      <div>
         <div class="section-header"><span class="section-title">❤️ Despesas</span></div>
         <div class="categories-grid">${expense.map(c => this._catCard(c)).join('') || '<p class="text-muted text-sm">Nenhuma</p>'}</div>
       </div>
-      ${smart.length ? `
-      <div>
-        <div class="section-header">
-          <span class="section-title">⚡ Personalizadas <span class="smart-badge">SMART</span></span>
-        </div>
-        <p class="text-muted text-sm mb-2">Ao selecionar em uma nova transação, os campos são preenchidos automaticamente.</p>
-        <div class="categories-grid">${smart.map(c => this._catCard(c)).join('')}</div>
-      </div>` : ''}
     `;
   },
 
   _catCard(c) {
     return `<div class="cat-card">
       <div class="cat-icon" style="background:${c.color}22">${c.icon}</div>
-      <div style="flex:1;min-width:0">
-        <div class="cat-name">${c.name}${c.smart ? '<span class="smart-badge">SMART</span>' : ''}</div>
+      <div>
+        <div class="cat-name">${c.name}</div>
         <div class="cat-type">${c.type === 'income' ? 'Receita' : 'Despesa'}</div>
-        ${c.smart && c.smartDefaults ? `<div class="text-muted text-sm">${Utils.formatCurrency(c.smartDefaults.amount || 0)}</div>` : ''}
       </div>
       <div class="cat-actions">
         <button class="icon-btn" onclick="Categories.openEdit('${c._id}')" title="Editar">✏️</button>
@@ -64,14 +61,13 @@ const Categories = {
 
   openCreate() {
     this.editingId = null;
-    this.isSmart = false;
     document.getElementById('modal-cat-title').textContent = 'Nova Categoria';
     document.getElementById('form-cat').reset();
     this.selectedColor = COLORS[0];
     this.selectedIcon  = ICONS[0];
+    document.getElementById('cat-type').value = 'expense';
     this._renderColorPicker();
     this._renderIconPicker();
-    this._updateSmartUI();
     Modal.open('modal-cat');
   },
 
@@ -79,7 +75,6 @@ const Categories = {
     const cat = Store.get('categories').find(c => c._id === id);
     if (!cat) return;
     this.editingId = id;
-    this.isSmart = !!cat.smart;
     document.getElementById('modal-cat-title').textContent = 'Editar Categoria';
     document.getElementById('cat-name').value = cat.name;
     document.getElementById('cat-type').value = cat.type;
@@ -87,26 +82,7 @@ const Categories = {
     this.selectedIcon  = cat.icon  || ICONS[0];
     this._renderColorPicker();
     this._renderIconPicker();
-
-    if (cat.smart && cat.smartDefaults) {
-      document.getElementById('smart-desc').value    = cat.smartDefaults.description || '';
-      document.getElementById('smart-amount').value  = cat.smartDefaults.amount || '';
-      document.getElementById('smart-note').value    = cat.smartDefaults.note || '';
-    }
-    this._updateSmartUI();
     Modal.open('modal-cat');
-  },
-
-  toggleSmart() {
-    this.isSmart = !this.isSmart;
-    this._updateSmartUI();
-  },
-
-  _updateSmartUI() {
-    const toggle = document.getElementById('smart-toggle-switch');
-    const section = document.getElementById('smart-defaults-section');
-    if (toggle) toggle.classList.toggle('on', this.isSmart);
-    if (section) section.classList.toggle('show', this.isSmart);
   },
 
   _renderColorPicker() {
@@ -133,19 +109,11 @@ const Categories = {
   async save(e) {
     e.preventDefault();
     const btn = e.target.querySelector('button[type=submit]');
-    const smartDefaults = this.isSmart ? {
-      description: document.getElementById('smart-desc').value.trim(),
-      amount:      parseFloat(document.getElementById('smart-amount').value) || null,
-      note:        document.getElementById('smart-note').value.trim()
-    } : null;
-
     const body = {
       name:  document.getElementById('cat-name').value,
       type:  document.getElementById('cat-type').value,
       color: this.selectedColor,
-      icon:  this.selectedIcon,
-      smart: this.isSmart,
-      smartDefaults
+      icon:  this.selectedIcon
     };
     btn.disabled = true; btn.textContent = 'Salvando...';
     try {

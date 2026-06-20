@@ -3,18 +3,18 @@ import { requireAuth } from '../lib/auth.js';
 import { handleCors } from '../lib/cors.js';
 
 const DEFAULT_CATEGORIES = [
-  { name: 'Salário',          icon: '💼', color: '#22c55e', type: 'income',  smart: false },
-  { name: 'Freelance',        icon: '💻', color: '#3b82f6', type: 'income',  smart: false },
-  { name: 'Investimentos',    icon: '📈', color: '#a855f7', type: 'income',  smart: false },
-  { name: 'Outros (entrada)', icon: '➕', color: '#06b6d4', type: 'income',  smart: false },
-  { name: 'Moradia',          icon: '🏠', color: '#f97316', type: 'expense', smart: false },
-  { name: 'Alimentação',      icon: '🍽️', color: '#ef4444', type: 'expense', smart: false },
-  { name: 'Transporte',       icon: '🚗', color: '#eab308', type: 'expense', smart: false },
-  { name: 'Saúde',            icon: '🏥', color: '#ec4899', type: 'expense', smart: false },
-  { name: 'Lazer',            icon: '🎮', color: '#8b5cf6', type: 'expense', smart: false },
-  { name: 'Educação',         icon: '📚', color: '#14b8a6', type: 'expense', smart: false },
-  { name: 'Roupas',           icon: '👕', color: '#f59e0b', type: 'expense', smart: false },
-  { name: 'Outros (saída)',   icon: '➖', color: '#6b7280', type: 'expense', smart: false }
+  { name: 'Salário', icon: '💼', color: '#22c55e', type: 'income' },
+  { name: 'Freelance', icon: '💻', color: '#3b82f6', type: 'income' },
+  { name: 'Investimentos', icon: '📈', color: '#a855f7', type: 'income' },
+  { name: 'Outros (entrada)', icon: '➕', color: '#06b6d4', type: 'income' },
+  { name: 'Moradia', icon: '🏠', color: '#f97316', type: 'expense' },
+  { name: 'Alimentação', icon: '🍽️', color: '#ef4444', type: 'expense' },
+  { name: 'Transporte', icon: '🚗', color: '#eab308', type: 'expense' },
+  { name: 'Saúde', icon: '🏥', color: '#ec4899', type: 'expense' },
+  { name: 'Lazer', icon: '🎮', color: '#8b5cf6', type: 'expense' },
+  { name: 'Educação', icon: '📚', color: '#14b8a6', type: 'expense' },
+  { name: 'Roupas', icon: '👕', color: '#f59e0b', type: 'expense' },
+  { name: 'Outros (saída)', icon: '➖', color: '#6b7280', type: 'expense' }
 ];
 
 export default async function handler(req, res) {
@@ -27,6 +27,7 @@ export default async function handler(req, res) {
 
   if (req.method === 'GET') {
     let categories = await col.find({ userId: user.id }).sort({ name: 1 }).toArray();
+    // Seed padrão no primeiro acesso
     if (categories.length === 0) {
       const docs = DEFAULT_CATEGORIES.map(c => ({ ...c, userId: user.id, createdAt: new Date() }));
       await col.insertMany(docs);
@@ -36,7 +37,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'POST') {
-    const { name, icon, color, type, smart, smartDefaults } = req.body;
+    const { name, icon, color, type } = req.body;
     if (!name || !type) return res.status(400).json({ error: 'Nome e tipo são obrigatórios.' });
     const doc = {
       userId: user.id,
@@ -44,8 +45,6 @@ export default async function handler(req, res) {
       icon: icon || '📁',
       color: color || '#6b7280',
       type,
-      smart: smart || false,
-      smartDefaults: smartDefaults || null,
       createdAt: new Date()
     };
     const result = await col.insertOne(doc);

@@ -28,7 +28,6 @@ export default async function handler(req, res) {
       deadline: deadline ? new Date(deadline) : null,
       icon: icon || '🎯',
       color: color || '#3b82f6',
-      deposits: [],
       createdAt: new Date()
     };
     const result = await col.insertOne(doc);
