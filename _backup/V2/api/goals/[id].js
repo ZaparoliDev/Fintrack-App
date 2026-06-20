@@ -16,47 +16,25 @@ export default async function handler(req, res) {
   const filter = { _id: new ObjectId(id), userId: user.id };
 
   if (req.method === 'PUT') {
-    const { name, targetAmount, currentAmount, deadline, icon, color, deposit, removeDepositIndex } = req.body;
+    const { name, targetAmount, currentAmount, deadline, icon, color, deposit } = req.body;
+    const update = { updatedAt: new Date() };
 
-    // ADICIONAR depósito
+    // Depósito: adiciona ao array de histórico e incrementa currentAmount
     if (deposit !== undefined) {
       const amount = Number(deposit.amount);
-      if (!amount || amount <= 0) return res.status(400).json({ error: 'Valor inválido.' });
       const entry = { amount, note: deposit.note || '', date: new Date() };
       const goal = await col.findOne(filter);
       if (!goal) return res.status(404).json({ error: 'Meta não encontrada.' });
+      update.currentAmount = goal.currentAmount + amount;
+      update.$push = { deposits: entry }; // tratado abaixo separadamente
       const result = await col.findOneAndUpdate(
         filter,
-        {
-          $set: { currentAmount: goal.currentAmount + amount, updatedAt: new Date() },
-          $push: { deposits: entry }
-        },
+        { $set: { currentAmount: update.currentAmount, updatedAt: new Date() }, $push: { deposits: entry } },
         { returnDocument: 'after' }
       );
       return res.status(200).json(result);
     }
 
-    // REMOVER depósito por índice
-    if (removeDepositIndex !== undefined) {
-      const idx = Number(removeDepositIndex);
-      const goal = await col.findOne(filter);
-      if (!goal) return res.status(404).json({ error: 'Meta não encontrada.' });
-      const deposits = goal.deposits || [];
-      if (idx < 0 || idx >= deposits.length)
-        return res.status(400).json({ error: 'Índice de depósito inválido.' });
-      const removed = deposits[idx];
-      const newDeposits = deposits.filter((_, i) => i !== idx);
-      const newCurrent = Math.max(0, goal.currentAmount - removed.amount);
-      const result = await col.findOneAndUpdate(
-        filter,
-        { $set: { deposits: newDeposits, currentAmount: newCurrent, updatedAt: new Date() } },
-        { returnDocument: 'after' }
-      );
-      return res.status(200).json(result);
-    }
-
-    // EDITAR meta
-    const update = { updatedAt: new Date() };
     if (name !== undefined) update.name = name.trim();
     if (targetAmount !== undefined) update.targetAmount = Number(targetAmount);
     if (currentAmount !== undefined) update.currentAmount = Number(currentAmount);

@@ -94,8 +94,6 @@ const Transactions = {
     document.getElementById('modal-tx-title').textContent = 'Nova Transação';
     document.getElementById('form-tx').reset();
     document.getElementById('tx-date').value = new Date().toISOString().slice(0, 10);
-    const ind = document.getElementById('smart-cat-indicator');
-    if (ind) ind.classList.remove('show');
     this.setType('expense');
     this.populateCategorySelect();
     Modal.open('modal-tx');
@@ -123,41 +121,17 @@ const Transactions = {
     this.populateCategorySelect(type);
   },
 
-  // Ao selecionar uma categoria smart, preenche os campos e mostra indicador
+  // Ao selecionar uma categoria smart, preenche os campos automaticamente
   onCategoryChange(val) {
-    const indicator = document.getElementById('smart-cat-indicator');
-    if (!val) {
-      if (indicator) indicator.classList.remove('show');
-      return;
-    }
+    if (!val) return;
     const cat = Store.get('categories').find(c => c._id === val);
-
-    // Esconde indicador se não for smart
-    if (!cat?.smart) {
-      if (indicator) indicator.classList.remove('show');
-      return;
-    }
-
-    // Preenche campos com os defaults da categoria smart
-    const sd = cat.smartDefaults || {};
+    if (!cat?.smart || !cat.smartDefaults) return;
+    const sd = cat.smartDefaults;
     if (sd.description) document.getElementById('tx-description').value = sd.description;
     if (sd.amount)      document.getElementById('tx-amount').value      = sd.amount;
     if (sd.note)        document.getElementById('tx-note').value        = sd.note;
-    if (cat.type)       this.setTypeWithoutResetCategory(cat.type);
-
-    // Mostra indicador visual
-    if (indicator) {
-      indicator.classList.add('show');
-      const nameEl = document.getElementById('smart-cat-name');
-      if (nameEl) nameEl.textContent = cat.icon + ' ' + cat.name;
-    }
-  },
-
-  // setType sem resetar o select de categoria
-  setTypeWithoutResetCategory(type) {
-    document.getElementById('btn-income').classList.toggle('active', type === 'income');
-    document.getElementById('btn-expense').classList.toggle('active', type === 'expense');
-    document.getElementById('tx-type-hidden').value = type;
+    // Garantir o tipo correto
+    if (cat.type) this.setType(cat.type);
   },
 
   populateCategorySelect(type) {

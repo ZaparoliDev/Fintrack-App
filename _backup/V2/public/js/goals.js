@@ -40,17 +40,14 @@ const Goals = {
     const done = pct >= 100;
     const remaining = Math.max(0, g.targetAmount - g.currentAmount);
 
-    const deposits = (g.deposits || []).slice().reverse(); // mais recentes primeiro
+    const deposits = (g.deposits || []).slice(-5).reverse();
     const depositHistory = deposits.length
-      ? deposits.map((d, i) => {
-          const realIdx = (g.deposits.length - 1) - i; // índice real no array original
-          return `<div class="deposit-entry">
+      ? deposits.map(d => `
+          <div class="deposit-entry">
             <span class="deposit-amount">+ ${Utils.formatCurrency(d.amount)}</span>
             <span class="deposit-note">${d.note || '—'}</span>
             <span class="deposit-date">${Utils.formatDate(d.date)}</span>
-            <button class="deposit-del" onclick="Goals.removeDeposit('${g._id}', ${realIdx})" title="Excluir depósito">✕</button>
-          </div>`;
-        }).join('')
+          </div>`).join('')
       : '<div class="text-muted text-sm" style="padding:6px 0">Nenhum depósito ainda.</div>';
 
     return `<div class="goal-card" id="goal-card-${g._id}">
@@ -80,9 +77,9 @@ const Goals = {
         <span class="goal-target">${Utils.formatCurrency(g.targetAmount)}</span>
       </div>
 
-      ${!done
-        ? `<div class="mt-1 text-sm text-muted" style="text-align:center">Faltam <strong style="color:${g.color}">${Utils.formatCurrency(remaining)}</strong></div>`
-        : `<div class="mt-1 text-sm" style="text-align:center;color:var(--green);font-weight:700">✓ Meta atingida!</div>`}
+      ${!done ? `<div class="mt-1 text-sm text-muted" style="text-align:center">
+        Faltam <strong style="color:${g.color}">${Utils.formatCurrency(remaining)}</strong>
+      </div>` : `<div class="mt-1 text-sm" style="text-align:center;color:var(--green);font-weight:700">✓ Meta atingida!</div>`}
 
       <button class="btn btn-secondary btn-sm btn-full mt-2"
         onclick="Goals.toggleDeposit('${g._id}')"
@@ -104,25 +101,13 @@ const Goals = {
         </div>
         <button class="btn btn-primary btn-sm btn-full" onclick="Goals.saveDeposit('${g._id}')">Confirmar depósito</button>
 
+        ${deposits.length ? `
         <div class="divider" style="margin:12px 0 8px"></div>
-        <div style="font-size:0.75rem;font-weight:700;color:var(--text-muted);margin-bottom:6px">
-          HISTÓRICO (${deposits.length} depósito${deposits.length !== 1 ? 's' : ''})
-        </div>
+        <div style="font-size:0.75rem;font-weight:700;color:var(--text-muted);margin-bottom:6px">ÚLTIMOS DEPÓSITOS</div>
         <div class="deposit-history">${depositHistory}</div>
+        ` : ''}
       </div>
     </div>`;
-  },
-
-  async removeDeposit(goalId, depositIndex) {
-    if (!Utils.confirm('Excluir este depósito? O valor será descontado da meta.')) return;
-    try {
-      await API.updateGoal(goalId, { removeDepositIndex: depositIndex });
-      Utils.toast('Depósito removido.', 'success');
-      await this.load();
-      this.render();
-    } catch (err) {
-      Utils.toast(err.message, 'error');
-    }
   },
 
   toggleDeposit(id) {
