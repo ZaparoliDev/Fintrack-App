@@ -1,7 +1,7 @@
 // ===== MODAL =====
 const Modal = {
-  open(id)  { document.getElementById(id).classList.add('open'); },
-  close(id) { document.getElementById(id).classList.remove('open'); }
+  open(id)  { document.getElementById(id)?.classList.add('open'); },
+  close(id) { document.getElementById(id)?.classList.remove('open'); }
 };
 
 // ===== APP CONTROLLER =====
@@ -13,7 +13,16 @@ const App = {
     if (Auth.restore()) {
       await this.showApp();
     } else {
+      this._hideLoader();
       this.showAuth();
+    }
+  },
+
+  _hideLoader() {
+    const loader = document.getElementById('global-loader');
+    if (loader) {
+      loader.classList.add('hide');
+      setTimeout(() => loader.remove(), 400);
     }
   },
 
@@ -31,11 +40,14 @@ const App = {
     document.getElementById('user-email').textContent = user.email;
     document.getElementById('user-avatar').textContent = Utils.initials(user.name);
 
-    // Load base data
-    await Categories.load();
-    await Transactions.load();
-    await Goals.load();
+    // Load tudo em paralelo — mais rápido
+    await Promise.all([
+      Categories.load(),
+      Transactions.load(),
+      Goals.load()
+    ]);
 
+    this._hideLoader();
     this.initNav();
     this.initMonthPicker();
     this.initMobileMenu();
@@ -46,7 +58,6 @@ const App = {
     document.querySelectorAll('.nav-item[data-page]').forEach(el => {
       el.addEventListener('click', () => {
         this.navigate(el.dataset.page);
-        // Close mobile sidebar
         document.querySelector('.sidebar').classList.remove('open');
         document.getElementById('overlay-bg').classList.remove('show');
       });
@@ -60,7 +71,7 @@ const App = {
   },
 
   initMobileMenu() {
-    const toggle = document.getElementById('menu-toggle');
+    const toggle  = document.getElementById('menu-toggle');
     const sidebar = document.querySelector('.sidebar');
     const overlay = document.getElementById('overlay-bg');
     toggle.addEventListener('click', () => {
@@ -73,19 +84,23 @@ const App = {
     });
   },
 
-  changeMonth(dir) {
+  async changeMonth(dir) {
     let m = Store.get('currentMonth') + dir;
     let y = Store.get('currentYear');
-    if (m > 12) { m = 1; y++; }
+    if (m > 12) { m = 1;  y++; }
     if (m < 1)  { m = 12; y--; }
     Store.set('currentMonth', m);
     Store.set('currentYear', y);
     this.updateMonthLabel();
-    Transactions.load().then(() => {
-      if (this.currentPage === 'transactions') Transactions.render();
-      if (this.currentPage === 'dashboard') Dashboard.refresh();
-      if (this.currentPage === 'reports')   Reports.load();
-    });
+
+    // Loading feedback na tabela
+    const tbody = document.getElementById('tx-tbody');
+    if (tbody) tbody.innerHTML = `<tr><td colspan="6"><div class="loader"><div class="spinner"></div></div></td></tr>`;
+
+    await Transactions.load();
+    if (this.currentPage === 'transactions') Transactions.render();
+    if (this.currentPage === 'dashboard')    Dashboard.refresh();
+    if (this.currentPage === 'reports')      Reports.load();
   },
 
   updateMonthLabel() {
@@ -96,12 +111,10 @@ const App = {
   navigate(page) {
     this.currentPage = page;
 
-    // Update nav
     document.querySelectorAll('.nav-item[data-page]').forEach(el => {
       el.classList.toggle('active', el.dataset.page === page);
     });
 
-    // Update topbar title
     const titles = {
       dashboard:    '📊 Dashboard',
       transactions: '💳 Transações',
@@ -111,23 +124,21 @@ const App = {
     };
     document.getElementById('topbar-title').textContent = titles[page] || page;
 
-    // Hide all pages
-    document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
-    document.getElementById('page-' + page).classList.remove('hidden');
+    // Scroll reset
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    document.querySelector('.main-content')?.scrollTo({ top: 0 });
 
-    // Load page content
-    if (page === 'dashboard')    this.loadDashboard();
-    if (page === 'transactions') this.loadTransactions();
+    document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
+    document.getElementById('page-' + page)?.classList.remove('hidden');
+
+    if (page === 'dashboard')    Dashboard.refresh();
+    if (page === 'transactions') this._loadTransactions();
     if (page === 'categories')   Categories.render();
     if (page === 'goals')        Goals.render();
     if (page === 'reports')      Reports.load();
   },
 
-  async loadDashboard() {
-    await Dashboard.refresh();
-  },
-
-  loadTransactions() {
+  _loadTransactions() {
     Transactions.initFilters();
     Transactions.populateCategoryFilter();
     Transactions.applyFilter();
@@ -136,20 +147,17 @@ const App = {
 
 // ===== GLOBAL MODAL SETUP =====
 document.addEventListener('DOMContentLoaded', () => {
-  // Close modals on overlay click
   document.querySelectorAll('.modal-overlay').forEach(overlay => {
     overlay.addEventListener('click', e => {
       if (e.target === overlay) overlay.classList.remove('open');
     });
   });
 
-  // Form submissions
-  document.getElementById('form-tx')?.addEventListener('submit', e => Transactions.save(e));
-  document.getElementById('form-cat')?.addEventListener('submit', e => Categories.save(e));
+  document.getElementById('form-tx')?.addEventListener('submit',   e => Transactions.save(e));
+  document.getElementById('form-cat')?.addEventListener('submit',  e => Categories.save(e));
   document.getElementById('form-goal')?.addEventListener('submit', e => Goals.save(e));
 
-  // Type toggle buttons
-  document.getElementById('btn-income')?.addEventListener('click', () => Transactions.setType('income'));
+  document.getElementById('btn-income')?.addEventListener('click',  () => Transactions.setType('income'));
   document.getElementById('btn-expense')?.addEventListener('click', () => Transactions.setType('expense'));
 
   App.init();

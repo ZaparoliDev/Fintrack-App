@@ -11,6 +11,13 @@
 </head>
 <body>
 
+<!-- ===== GLOBAL LOADER ===== -->
+<div id="global-loader">
+  <div class="loader-logo">💸</div>
+  <div class="loader-bar"><div class="loader-bar-fill"></div></div>
+  <div class="loader-text">Carregando Fintrack...</div>
+</div>
+
 <!-- ===== AUTH ===== -->
 <div id="auth-screen">
   <div class="auth-card">
@@ -62,7 +69,6 @@
       <h2>Fintrack</h2>
     </div>
     <nav class="sidebar-nav">
-      <div class="nav-section-label">Menu</div>
       <div class="nav-item active" data-page="dashboard"><span class="nav-icon">📊</span> Dashboard</div>
       <div class="nav-item" data-page="transactions"><span class="nav-icon">💳</span> Transações</div>
       <div class="nav-item" data-page="categories"><span class="nav-icon">🏷️</span> Categorias</div>
@@ -70,14 +76,16 @@
       <div class="nav-item" data-page="reports"><span class="nav-icon">📈</span> Relatórios</div>
     </nav>
     <div class="sidebar-footer">
-      <div class="user-info">
+      <div class="user-card">
         <div class="user-avatar" id="user-avatar">?</div>
         <div style="flex:1;min-width:0">
           <div class="user-name" id="user-name">—</div>
           <div class="user-email" id="user-email">—</div>
         </div>
       </div>
-      <button class="btn btn-ghost btn-sm btn-full" id="btn-logout" style="margin-top:6px">↩ Sair</button>
+      <button class="btn-logout" id="btn-logout">
+        <span>↩</span> Sair da conta
+      </button>
     </div>
   </aside>
 
@@ -229,18 +237,26 @@
 
     <!-- ===== REPORTS ===== -->
     <div id="page-reports" class="page page-content hidden">
-      <div class="stat-grid" style="margin-bottom:24px">
+      <div class="stat-grid" style="margin-bottom:20px">
         <div class="stat-card">
-          <span class="stat-label">Receitas do mês</span>
+          <span class="stat-label">Receitas</span>
           <span class="stat-value green" id="rep-income-r">R$ 0,00</span>
         </div>
         <div class="stat-card">
-          <span class="stat-label">Despesas do mês</span>
+          <span class="stat-label">Despesas</span>
           <span class="stat-value red" id="rep-expense-r">R$ 0,00</span>
         </div>
         <div class="stat-card">
-          <span class="stat-label">Saldo do mês</span>
+          <span class="stat-label">Saldo</span>
           <span class="stat-value blue" id="rep-balance-r">R$ 0,00</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Taxa de gasto</span>
+          <span class="stat-value green" id="rep-rate">0%</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Economia</span>
+          <span class="stat-value green" id="rep-savings">R$ 0,00</span>
         </div>
       </div>
       <div class="charts-grid">
@@ -250,13 +266,11 @@
         </div>
         <div class="chart-card">
           <div class="chart-title">Despesas por categoria</div>
-          <canvas id="chart-donut"></canvas>
-          <div id="donut-legend" class="donut-legend"></div>
+          <div id="donut-wrap"></div>
         </div>
         <div class="chart-card">
-          <div class="chart-title">Visão geral do mês</div>
-          <canvas id="chart-pie"></canvas>
-          <div id="pie-legend" class="donut-legend mt-2"></div>
+          <div class="chart-title">Receitas vs Despesas</div>
+          <div id="pie-wrap"></div>
         </div>
       </div>
     </div>
