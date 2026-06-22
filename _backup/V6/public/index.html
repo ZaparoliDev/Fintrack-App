@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fintrack — Gestão Financeira</title>
+  <meta name="description" content="Controle suas finanças pessoais com facilidade." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💸</text></svg>" />
+  <link rel="stylesheet" href="/css/style.css" />
+  <!-- Anti-flash: aplica tema antes do CSS renderizar -->
+  <script>
+    (function(){
+      var t = localStorage.getItem('ft_theme');
+      if (t === 'light') document.documentElement.classList.add('light');
+    })();
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<!-- ===== GLOBAL LOADER ===== -->
+<div id="global-loader">
+  <div class="loader-logo">💸</div>
+  <div class="loader-bar"><div class="loader-bar-fill"></div></div>
+  <div class="loader-text">Carregando Fintrack...</div>
+</div>
+
+<!-- ===== AUTH ===== -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="auth-logo-icon">💸</div>
+      <h1>Fin<span>track</span></h1>
+    </div>
+    <h2 class="auth-title">Bem-vindo de volta</h2>
+    <p class="auth-subtitle">Controle suas finanças com clareza.</p>
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tab-login">Entrar</button>
+      <button class="auth-tab" id="tab-register">Criar conta</button>
+    </div>
+    <form id="form-login">
+      <div class="form-group">
+        <label class="form-label">E-mail</label>
+        <input id="login-email" type="email" class="form-input" placeholder="seu@email.com" required />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Senha</label>
+        <input id="login-password" type="password" class="form-input" placeholder="••••••" required />
+      </div>
+      <button type="submit" class="btn btn-primary btn-full" style="margin-top:8px">Entrar</button>
+    </form>
+    <form id="form-register" class="hidden">
+      <div class="form-group">
+        <label class="form-label">Nome</label>
+        <input id="reg-name" type="text" class="form-input" placeholder="Seu nome" required />
+      </div>
+      <div class="form-group">
+        <label class="form-label">E-mail</label>
+        <input id="reg-email" type="email" class="form-input" placeholder="seu@email.com" required />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Senha</label>
+        <input id="reg-password" type="password" class="form-input" placeholder="Mínimo 6 caracteres" required minlength="6" />
+      </div>
+      <button type="submit" class="btn btn-primary btn-full" style="margin-top:8px">Criar conta</button>
+    </form>
+  </div>
+</div>
+
+<!-- ===== APP ===== -->
+<div id="app-screen" class="hidden">
+
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-icon">💸</div>
+      <h2>Fintrack</h2>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-item active" data-page="dashboard"><span class="nav-icon">📊</span> Dashboard</div>
+      <div class="nav-item" data-page="transactions"><span class="nav-icon">💳</span> Transações</div>
+      <div class="nav-item" data-page="categories"><span class="nav-icon">🏷️</span> Categorias</div>
+      <div class="nav-item" data-page="goals"><span class="nav-icon">🎯</span> Metas</div>
+      <div class="nav-item" data-page="reports"><span class="nav-icon">📈</span> Relatórios</div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-card">
+        <div class="user-avatar" id="user-avatar">?</div>
+        <div style="flex:1;min-width:0">
+          <div class="user-name" id="user-name">—</div>
+          <div class="user-email" id="user-email">—</div>
+        </div>
+      </div>
+      <button class="btn-logout" id="btn-logout">
+        <span>↩</span> Sair da conta
+      </button>
+    </div>
+  </aside>
+
+  <div id="overlay-bg" class="overlay-bg"></div>
+
+  <div class="main-content">
+    <header class="topbar">
+      <div class="flex gap-2" style="align-items:center">
+        <button class="menu-toggle" id="menu-toggle">☰</button>
+        <span class="topbar-title" id="topbar-title">📊 Dashboard</span>
+      </div>
+      <div class="topbar-actions">
+        <button class="theme-toggle" id="btn-theme" title="Alternar tema">🌙</button>
+        <div class="month-picker">
+          <button class="month-nav" id="btn-prev-month">‹</button>
+          <span class="month-label" id="month-label">—</span>
+          <button class="month-nav" id="btn-next-month">›</button>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="Transactions.openCreate()">+ Nova transação</button>
+      </div>
+    </header>
+
+    <!-- ===== DASHBOARD ===== -->
+    <div id="page-dashboard" class="page page-content">
+
+      <!-- Hero + Quick stats -->
+      <div class="dash-grid" style="margin-bottom:16px">
+        <div class="balance-hero">
+          <div class="balance-hero-label">Saldo do mês</div>
+          <div class="balance-hero-value" id="dash-balance-hero">R$ 0,00</div>
+          <div class="balance-row">
+            <div class="balance-mini">
+              <span class="balance-mini-label">Receitas</span>
+              <span class="balance-mini-value inc" id="dash-income-mini">R$ 0,00</span>
+            </div>
+            <div class="balance-mini">
+              <span class="balance-mini-label">Despesas</span>
+              <span class="balance-mini-value exp" id="dash-expense-mini">R$ 0,00</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div class="quick-stats">
+            <div class="quick-stat">
+              <div class="quick-stat-icon">🧾</div>
+              <div class="quick-stat-label">Transações</div>
+              <div class="quick-stat-value" id="dash-tx-count">0</div>
+            </div>
+            <div class="quick-stat">
+              <div class="quick-stat-icon">🎯</div>
+              <div class="quick-stat-label">Metas ativas</div>
+              <div class="quick-stat-value" id="dash-goals-count">0</div>
+            </div>
+            <div class="quick-stat">
+              <div class="quick-stat-icon">📉</div>
+              <div class="quick-stat-label">Gasto médio</div>
+              <div class="quick-stat-value" id="dash-avg-expense" style="font-size:0.8rem">R$ 0</div>
+            </div>
+            <div class="quick-stat">
+              <div class="quick-stat-icon">🏆</div>
+              <div class="quick-stat-label">Top categoria</div>
+              <div class="quick-stat-value" id="dash-top-cat" style="font-size:0.78rem">—</div>
+            </div>
+          </div>
+
+          <div class="month-progress">
+            <div class="month-progress-header">
+              <span class="month-progress-title">Orçamento consumido</span>
+              <span class="month-progress-pct" id="dash-month-pct">0%</span>
+            </div>
+            <div class="month-bar">
+              <div class="month-bar-fill" id="dash-month-bar-fill" style="width:0%"></div>
+            </div>
+            <div class="text-muted text-sm mt-1">Despesas ÷ Receitas do mês</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Gráfico -->
+      <div class="card dash-grid-full" style="margin-bottom:16px">
+        <div class="section-header" style="margin-bottom:14px">
+          <span class="section-title">Evolução — últimos 6 meses</span>
+        </div>
+        <canvas id="chart-monthly" height="90"></canvas>
+      </div>
+
+      <!-- Transações recentes -->
+      <div class="card">
+        <div class="section-header">
+          <span class="section-title">Últimas transações</span>
+          <button class="btn btn-ghost btn-sm" onclick="App.navigate('transactions')">Ver todas →</button>
+        </div>
+        <div id="dash-recent"></div>
+      </div>
+    </div>
+
+    <!-- ===== TRANSACTIONS ===== -->
+    <div id="page-transactions" class="page page-content hidden">
+      <div class="table-wrap">
+        <div class="table-filters">
+          <input type="text" id="tx-search" class="filter-input" placeholder="🔍 Buscar..." style="flex:1;min-width:160px" />
+          <select id="tx-filter-type" class="filter-select">
+            <option value="">Todos os tipos</option>
+            <option value="income">Receitas</option>
+            <option value="expense">Despesas</option>
+          </select>
+          <select id="tx-filter-cat" class="filter-select">
+            <option value="">Todas as categorias</option>
+          </select>
+          <button class="btn btn-primary btn-sm" onclick="Transactions.openCreate()">+ Adicionar</button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Descrição</th><th>Tipo</th><th>Categoria</th><th>Data</th><th>Valor</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="tx-tbody">
+            <tr><td colspan="6"><div class="loader"><div class="spinner"></div></div></td></tr>
+          </tbody>
+        </table>
+        <div class="pagination">
+          <span class="page-info" id="tx-page-info"></span>
+          <div id="tx-pagination" class="flex gap-2"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== CATEGORIES ===== -->
+    <div id="page-categories" class="page page-content hidden">
+      <div class="section-header" style="margin-bottom:20px">
+        <div>
+          <div class="section-title">Categorias</div>
+          <div class="section-sub">Categorias <strong>SMART ⚡</strong> preenchem a transação automaticamente.</div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="Categories.openCreate()">+ Nova categoria</button>
+      </div>
+      <div id="categories-list"></div>
+    </div>
+
+    <!-- ===== GOALS ===== -->
+    <div id="page-goals" class="page page-content hidden">
+      <div class="section-header" style="margin-bottom:20px">
+        <span></span>
+        <button class="btn btn-primary btn-sm" onclick="Goals.openCreate()">+ Nova meta</button>
+      </div>
+      <div id="goals-list"></div>
+    </div>
+
+    <!-- ===== REPORTS ===== -->
+    <div id="page-reports" class="page page-content hidden">
+      <div class="stat-grid" style="margin-bottom:20px">
+        <div class="stat-card">
+          <span class="stat-label">Receitas</span>
+          <span class="stat-value green" id="rep-income-r">R$ 0,00</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Despesas</span>
+          <span class="stat-value red" id="rep-expense-r">R$ 0,00</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Saldo</span>
+          <span class="stat-value blue" id="rep-balance-r">R$ 0,00</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Taxa de gasto</span>
+          <span class="stat-value green" id="rep-rate">0%</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Economia</span>
+          <span class="stat-value green" id="rep-savings">R$ 0,00</span>
+        </div>
+      </div>
+      <div class="charts-grid">
+        <div class="chart-card" style="grid-column:1/-1">
+          <div class="chart-title">Histórico — últimos 6 meses</div>
+          <canvas id="chart-monthly-r" height="100"></canvas>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Despesas por categoria</div>
+          <div id="donut-wrap"></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Receitas vs Despesas</div>
+          <div id="pie-wrap"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===== MODALS ===== -->
+
+<!-- Transaction Modal -->
+<div class="modal-overlay" id="modal-tx">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-tx-title">Nova Transação</span>
+      <button class="modal-close" onclick="Modal.close('modal-tx')">✕</button>
+    </div>
+    <div class="modal-body">
+      <form id="form-tx">
+        <input type="hidden" id="tx-type-hidden" value="expense" />
+        <div class="form-group">
+          <label class="form-label">Tipo</label>
+          <div class="type-toggle">
+            <button type="button" class="type-btn expense active" id="btn-expense">↓ Despesa</button>
+            <button type="button" class="type-btn income" id="btn-income">↑ Receita</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Categoria</label>
+          <select id="tx-category" class="form-select" onchange="Transactions.onCategoryChange(this.value)">
+            <option value="">Sem categoria</option>
+          </select>
+          <div class="tx-category-smart-indicator" id="smart-cat-indicator">
+            <span>⚡</span>
+            <span>Categoria Smart — campos preenchidos automaticamente: <strong id="smart-cat-name"></strong></span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Descrição</label>
+          <input id="tx-description" type="text" class="form-input" placeholder="Ex: Supermercado" required />
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Valor (R$)</label>
+            <input id="tx-amount" type="number" class="form-input" placeholder="0,00" step="0.01" min="0.01" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Data</label>
+            <input id="tx-date" type="date" class="form-input" required />
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Observação (opcional)</label>
+          <textarea id="tx-note" class="form-textarea" placeholder="Anotações adicionais..."></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary btn-full">Salvar</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Category Modal -->
+<div class="modal-overlay" id="modal-cat">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-cat-title">Nova Categoria</span>
+      <button class="modal-close" onclick="Modal.close('modal-cat')">✕</button>
+    </div>
+    <div class="modal-body">
+      <form id="form-cat">
+        <div class="form-group">
+          <label class="form-label">Nome</label>
+          <input id="cat-name" type="text" class="form-input" placeholder="Ex: Cartão de Crédito" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tipo</label>
+          <select id="cat-type" class="form-select">
+            <option value="expense">Despesa</option>
+            <option value="income">Receita</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Ícone</label>
+          <div id="cat-icon-picker" class="flex" style="flex-wrap:wrap;gap:4px"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Cor</label>
+          <div id="cat-color-picker" class="color-picker-row"></div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Smart toggle -->
+        <div class="smart-toggle-row" onclick="Categories.toggleSmart()">
+          <div>
+            <div class="smart-toggle-label">⚡ Categoria Personalizada (Smart)</div>
+            <div class="smart-toggle-sub">Preenche a transação automaticamente ao selecionar</div>
+          </div>
+          <div class="toggle-switch" id="smart-toggle-switch"></div>
+        </div>
+
+        <div class="smart-defaults-section" id="smart-defaults-section">
+          <div class="smart-defaults-title">Valores padrão ao selecionar esta categoria</div>
+          <div class="form-group">
+            <label class="form-label">Descrição padrão</label>
+            <input id="smart-desc" type="text" class="form-input" placeholder="Ex: Fatura Cartão Nubank" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Valor padrão (R$)</label>
+            <input id="smart-amount" type="number" class="form-input" placeholder="Ex: 1500,00" step="0.01" min="0" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Observação padrão</label>
+            <input id="smart-note" type="text" class="form-input" placeholder="Ex: Débito automático" />
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-full mt-3">Salvar categoria</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Goal Modal -->
+<div class="modal-overlay" id="modal-goal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-goal-title">Nova Meta</span>
+      <button class="modal-close" onclick="Modal.close('modal-goal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <form id="form-goal">
+        <div class="form-group">
+          <label class="form-label">Nome da meta</label>
+          <input id="goal-name" type="text" class="form-input" placeholder="Ex: Viagem para Europa" required />
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Valor alvo (R$)</label>
+            <input id="goal-target" type="number" class="form-input" placeholder="5000" min="1" step="0.01" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Valor atual (R$)</label>
+            <input id="goal-current" type="number" class="form-input" placeholder="0" min="0" step="0.01" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Prazo (opcional)</label>
+          <input id="goal-deadline" type="date" class="form-input" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Ícone</label>
+          <div id="goal-icon-picker" class="flex" style="flex-wrap:wrap;gap:4px"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Cor</label>
+          <div id="goal-color-picker" class="color-picker-row"></div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-full mt-3">Salvar</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ===== PAYDAY PANEL ===== -->
+<div class="payday-overlay" id="payday-overlay">
+  <div class="payday-card" id="payday-card">
+    <div class="payday-confetti"></div>
+    <span class="payday-emoji" id="payday-emoji">💰</span>
+    <div class="payday-title" id="payday-title">O Salário já caiu, chefe?</div>
+    <div class="payday-sub" id="payday-sub">Registre agora para manter seu controle financeiro em dia.</div>
+    <div class="payday-input-wrap">
+      <span class="payday-currency">R$</span>
+      <input
+        type="number"
+        id="payday-amount"
+        class="payday-input"
+        placeholder="0,00"
+        step="0.01" min="0.01"
+      />
+    </div>
+    <div class="payday-hint" id="payday-hint">O valor será lançado como receita automaticamente.</div>
+    <div class="payday-actions">
+      <button class="payday-btn-register" id="payday-btn-register">✓ Registrar receita</button>
+      <button class="payday-btn-skip" id="payday-btn-skip">Agora não — lembrar amanhã</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script src="/js/utils.js"></script>
+<script src="/js/api.js"></script>
+<script src="/js/theme.js"></script>
+<script src="/js/auth.js"></script>
+<script src="/js/dashboard.js"></script>
+<script src="/js/transactions.js"></script>
+<script src="/js/categories.js"></script>
+<script src="/js/goals.js"></script>
+<script src="/js/reports.js"></script>
+<script src="/js/payday.js"></script>
+<script src="/js/app.js"></script>
+</body>
+</html>
