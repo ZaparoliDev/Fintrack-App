@@ -3,19 +3,23 @@ import { MongoClient } from 'mongodb';
 const uri = process.env.MONGODB_URI;
 if (!uri) throw new Error('MONGODB_URI não definida.');
 
-let clientPromise;
-if (process.env.NODE_ENV === 'development') {
-  if (!global._mongoClientPromise) {
-    const c = new MongoClient(uri, { maxPoolSize: 10, serverSelectionTimeoutMS: 5000 });
-    global._mongoClientPromise = c.connect();
-  }
-  clientPromise = global._mongoClientPromise;
-} else {
-  const c = new MongoClient(uri, { maxPoolSize: 10, serverSelectionTimeoutMS: 5000 });
-  clientPromise = c.connect();
-}
+let cachedClient = null;
+let cachedDb = null;
 
 export async function getDb() {
-  const c = await clientPromise;
-  return c.db(process.env.MONGODB_DB || 'fintrack');
+  // Reutiliza conexão existente
+  if (cachedClient && cachedDb) {
+    return cachedDb;
+  }
+
+  // Cria nova conexão se não existe
+  const client = new MongoClient(uri, {
+    maxPoolSize: 1, // IMPORTANTE: serverless precisa ser 1
+    serverSelectionTimeoutMS: 5000,
+  });
+
+  cachedClient = await client.connect();
+  cachedDb = cachedClient.db(process.env.MONGODB_DB || 'fintrack');
+  
+  return cachedDb;
 }
