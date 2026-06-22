@@ -36,22 +36,29 @@ const App = {
     document.getElementById('app-screen').classList.remove('hidden');
 
     const user = Store.get('user');
-    document.getElementById('user-name').textContent = user.name;
+    document.getElementById('user-name').textContent  = user.name;
     document.getElementById('user-email').textContent = user.email;
     document.getElementById('user-avatar').textContent = Utils.initials(user.name);
 
-    // Load tudo em paralelo — mais rápido
-    await Promise.all([
+    // Carrega tudo em paralelo
+    const [,,, settings] = await Promise.all([
       Categories.load(),
       Transactions.load(),
-      Goals.load()
+      Goals.load(),
+      API.getSettings().catch(() => ({}))
     ]);
+
+    // Aplica tema salvo no banco
+    Theme.applyFromSettings(settings);
 
     this._hideLoader();
     this.initNav();
     this.initMonthPicker();
     this.initMobileMenu();
     this.navigate('dashboard');
+
+    // Verifica painel de salário/vale após 1.5s (deixa o dashboard carregar primeiro)
+    setTimeout(() => Payday.check(settings), 1500);
   },
 
   initNav() {
@@ -147,6 +154,9 @@ const App = {
 
 // ===== GLOBAL MODAL SETUP =====
 document.addEventListener('DOMContentLoaded', () => {
+  // Tema aplicado imediatamente (sem flash)
+  Theme.init();
+
   document.querySelectorAll('.modal-overlay').forEach(overlay => {
     overlay.addEventListener('click', e => {
       if (e.target === overlay) overlay.classList.remove('open');

@@ -45,6 +45,10 @@ const API = {
   updateGoal(id, d)  { return this.put(`/goals/${id}`, d); },
   deleteGoal(id)     { return this.delete(`/goals/${id}`); },
 
+  // Settings
+  getSettings()      { return this.get('/settings'); },
+  saveSettings(d)    { return this.put('/settings', d); },
+
   // Reports
   getSummary(q)      { return this.get('/reports/summary' + (q ? '?' + new URLSearchParams(q) : '')); }
 };
