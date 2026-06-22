@@ -1,6 +1,6 @@
 // ===== FINTRACK API CLIENT =====
 const API = {
-  base: 'https://fintrack-sixseven.vercel.app/api';,
+  base: 'https://fintrack-sixseven.vercel.app/api',
 
   token() { return localStorage.getItem('ft_token'); },
 
