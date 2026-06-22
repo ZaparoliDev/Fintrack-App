@@ -50,5 +50,7 @@ const API = {
   saveSettings(d)    { return this.put('/settings', d); },
 
   // Reports
-  getSummary(q)      { return this.get('/reports/summary' + (q ? '?' + new URLSearchParams(q) : '')); }
+  getSummary(q)        { return this.get('/reports/summary' + (q ? '?' + new URLSearchParams(q) : '')); },
+  getAvailableMonths() { return this.get('/reports/months'); },
+  exportTransactions(q){ return this.get('/transactions/export' + (q ? '?' + new URLSearchParams(q) : '')); }
 };

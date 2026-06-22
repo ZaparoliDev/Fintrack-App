@@ -81,6 +81,10 @@
       <div class="nav-item" data-page="categories"><span class="nav-icon">🏷️</span> Categorias</div>
       <div class="nav-item" data-page="goals"><span class="nav-icon">🎯</span> Metas</div>
       <div class="nav-item" data-page="reports"><span class="nav-icon">📈</span> Relatórios</div>
+      <div class="nav-item" data-page="settings" id="nav-settings">
+        <span class="nav-icon">⚙️</span> Configurações
+        <span class="clt-sidebar-badge hidden" id="clt-sidebar-badge">CLT</span>
+      </div>
     </nav>
     <div class="sidebar-footer">
       <div class="user-card">
@@ -245,6 +249,12 @@
 
     <!-- ===== REPORTS ===== -->
     <div id="page-reports" class="page page-content hidden">
+      <div class="section-header" style="margin-bottom:20px">
+        <span></span>
+        <button class="btn btn-secondary btn-sm" onclick="Export.openPanel()">
+          📥 Exportar relatório
+        </button>
+      </div>
       <div class="stat-grid" style="margin-bottom:20px">
         <div class="stat-card">
           <span class="stat-label">Receitas</span>
@@ -283,6 +293,195 @@
       </div>
     </div>
 
+    <!-- ===== SETTINGS ===== -->
+    <div id="page-settings" class="page page-content hidden">
+
+      <!-- Banner CLT -->
+      <div class="clt-settings-banner">
+        <div class="clt-settings-emoji">👔</div>
+        <div class="clt-settings-text">
+          <div class="clt-settings-mode">Funcionalidade exclusiva</div>
+          <div class="clt-settings-title">Modo CLT Premium</div>
+          <div class="clt-settings-sub">Ative para receber lembretes inteligentes nos dias de salário e vale, com registro automático no Fintrack.</div>
+        </div>
+        <div class="clt-settings-toggle">
+          <div class="toggle-switch-lg" id="clt-master-toggle" onclick="Settings.toggleClt()"></div>
+        </div>
+      </div>
+
+      <div class="settings-grid">
+        <!-- CLT Config -->
+        <div class="settings-section full-width">
+          <div class="settings-section-header">
+            <span class="settings-section-icon">💰</span>
+            <div>
+              <div class="settings-section-title">Configuração CLT</div>
+              <div class="settings-section-sub">Defina os dias do mês para salário e vale</div>
+            </div>
+          </div>
+          <div class="settings-section-body">
+            <div id="clt-inactive-msg" class="text-muted text-sm" style="padding:6px 0">
+              Ative o Modo CLT Premium acima para configurar os dias de lembrete.
+            </div>
+            <div class="clt-days-section" id="clt-days-section">
+              <div class="clt-active-row">✓ Modo CLT Premium ativo — você receberá lembretes nos dias configurados abaixo.</div>
+              <div class="clt-days-title">Dias de notificação</div>
+              <div class="clt-days-grid">
+                <div class="clt-day-item">
+                  <div class="clt-day-label">💼 Dia do Salário</div>
+                  <input type="number" id="clt-salary-day" class="clt-day-input" min="1" max="28" placeholder="5" />
+                  <div class="clt-day-hint">Entre 1 e 28</div>
+                </div>
+                <div class="clt-day-item">
+                  <div class="clt-day-label">💵 Dia do Vale</div>
+                  <input type="number" id="clt-vale-day" class="clt-day-input" min="1" max="28" placeholder="20" />
+                  <div class="clt-day-hint">Entre 1 e 28</div>
+                </div>
+              </div>
+              <div style="margin-top:16px;display:flex;gap:10px;align-items:center">
+                <button class="btn btn-primary btn-sm" onclick="Settings.saveCltDays()">Salvar dias</button>
+                <button class="btn btn-danger btn-sm" onclick="Settings.toggleClt(true)">Desativar CLT</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tema -->
+        <div class="settings-section">
+          <div class="settings-section-header">
+            <span class="settings-section-icon">🎨</span>
+            <div>
+              <div class="settings-section-title">Aparência</div>
+              <div class="settings-section-sub">Tema visual do Fintrack</div>
+            </div>
+          </div>
+          <div class="settings-section-body">
+            <div class="settings-option-row">
+              <div>
+                <div class="settings-option-label">Modo escuro</div>
+                <div class="settings-option-sub">Fundo preto, ideal para uso noturno</div>
+              </div>
+              <div class="toggle-switch-lg" id="theme-toggle-settings" onclick="Settings.toggleTheme()"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Conta -->
+        <div class="settings-section">
+          <div class="settings-section-header">
+            <span class="settings-section-icon">👤</span>
+            <div>
+              <div class="settings-section-title">Sua conta</div>
+              <div class="settings-section-sub">Informações do perfil</div>
+            </div>
+          </div>
+          <div class="settings-section-body">
+            <div class="settings-option-row">
+              <div>
+                <div class="settings-option-label" id="settings-username">—</div>
+                <div class="settings-option-sub" id="settings-useremail">—</div>
+              </div>
+              <div class="user-avatar" id="settings-avatar" style="width:40px;height:40px;font-size:1rem">?</div>
+            </div>
+            <div class="settings-option-row">
+              <div>
+                <div class="settings-option-label">Sair da conta</div>
+                <div class="settings-option-sub">Encerra a sessão atual</div>
+              </div>
+              <button class="btn btn-danger btn-sm" onclick="Auth.logout()">↩ Sair</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main-content -->
+
+</div><!-- /app-screen -->
+
+<!-- ===== EXPORT PANEL ===== -->
+<div class="export-overlay" id="export-overlay">
+  <div class="export-card">
+    <div class="export-header">
+      <span class="export-title">📥 Exportar Relatório</span>
+      <button class="modal-close" onclick="Export.close()">✕</button>
+    </div>
+    <div class="export-body">
+
+      <div class="form-group">
+        <label class="form-label">Selecione os meses</label>
+        <div class="months-grid" id="export-months-grid">
+          <div class="loader"><div class="spinner"></div></div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Formato</label>
+        <div class="export-format-row">
+          <button class="format-btn selected" id="fmt-pdf" onclick="Export.setFormat('pdf')">
+            📄 PDF
+          </button>
+          <button class="format-btn" id="fmt-csv" onclick="Export.setFormat('csv')">
+            📊 CSV / Excel
+          </button>
+        </div>
+      </div>
+
+      <div class="export-info" id="export-info">
+        ℹ️ O PDF inclui logotipo, totais e tabela detalhada de transações com categorias.
+      </div>
+
+      <div class="export-actions">
+        <button class="btn btn-primary btn-full" id="btn-do-export" onclick="Export.generate()">
+          ⬇️ Gerar e baixar
+        </button>
+        <button class="btn btn-secondary" onclick="Export.close()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== ONBOARDING CLT ===== -->
+<div class="onboarding-overlay" id="onboarding-overlay">
+  <div class="onboarding-card">
+    <div class="onboarding-hero">
+      <span class="onboarding-hero-emoji">👔</span>
+      <div class="onboarding-hero-title">Modo CLT Premium</div>
+      <div class="onboarding-hero-sub">Seu Fintrack pode ser ainda mais inteligente.<br>Ative e nunca mais esqueça de registrar seu salário ou vale.</div>
+    </div>
+    <div class="onboarding-body">
+      <div class="clt-feature-list">
+        <div class="clt-feature-item">
+          <div class="clt-feature-icon">💼</div>
+          <div>
+            <div class="clt-feature-title">Lembrete de Salário</div>
+            <div class="clt-feature-desc">No dia que você escolher, o Fintrack pergunta: "O salário já caiu, chefe?" e registra como receita com um clique.</div>
+          </div>
+        </div>
+        <div class="clt-feature-item">
+          <div class="clt-feature-icon">💵</div>
+          <div>
+            <div class="clt-feature-title">Lembrete de Vale</div>
+            <div class="clt-feature-desc">O mesmo para o vale — no dia certo, no momento certo, sem você precisar lembrar.</div>
+          </div>
+        </div>
+        <div class="clt-feature-item">
+          <div class="clt-feature-icon">🧠</div>
+          <div>
+            <div class="clt-feature-title">Aprende com você</div>
+            <div class="clt-feature-desc">O último valor registrado é pré-preenchido automaticamente no mês seguinte.</div>
+          </div>
+        </div>
+      </div>
+      <div class="onboarding-actions">
+        <button class="onboarding-btn-activate" onclick="Onboarding.activate()">
+          ✓ Ativar Modo CLT Premium
+        </button>
+        <button class="onboarding-btn-skip" onclick="Onboarding.skip()">
+          Não, obrigado — usar sem esta função
+        </button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -479,6 +678,9 @@
 <script src="/js/goals.js"></script>
 <script src="/js/reports.js"></script>
 <script src="/js/payday.js"></script>
+<script src="/js/settings.js"></script>
+<script src="/js/onboarding.js"></script>
+<script src="/js/export.js"></script>
 <script src="/js/app.js"></script>
 </body>
 </html>

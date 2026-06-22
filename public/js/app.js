@@ -36,8 +36,8 @@ const App = {
     document.getElementById('app-screen').classList.remove('hidden');
 
     const user = Store.get('user');
-    document.getElementById('user-name').textContent  = user.name;
-    document.getElementById('user-email').textContent = user.email;
+    document.getElementById('user-name').textContent   = user.name;
+    document.getElementById('user-email').textContent  = user.email;
     document.getElementById('user-avatar').textContent = Utils.initials(user.name);
 
     // Carrega tudo em paralelo
@@ -48,8 +48,11 @@ const App = {
       API.getSettings().catch(() => ({}))
     ]);
 
-    // Aplica tema salvo no banco
+    // Inicializa módulos que dependem de settings
+    Settings.load(settings);
+    Store.set('settings', settings);
     Theme.applyFromSettings(settings);
+    Settings._updateSidebarBadge(!!settings.cltMode);
 
     this._hideLoader();
     this.initNav();
@@ -57,8 +60,15 @@ const App = {
     this.initMobileMenu();
     this.navigate('dashboard');
 
-    // Verifica painel de salário/vale após 1.5s (deixa o dashboard carregar primeiro)
-    setTimeout(() => Payday.check(settings), 1500);
+    // Fluxo pós-login:
+    // 1. Novo usuário (nunca viu onboarding) → mostra modal CLT após 1.8s
+    // 2. Usuário antigo sem onboarding → também mostra o modal
+    // 3. Usuário que já decidiu → verifica painel CLT normal
+    if (!settings.cltOnboardingDone) {
+      setTimeout(() => Onboarding.show(), 1800);
+    } else if (settings.cltMode) {
+      setTimeout(() => Payday.check(settings), 1500);
+    }
   },
 
   initNav() {
@@ -100,7 +110,6 @@ const App = {
     Store.set('currentYear', y);
     this.updateMonthLabel();
 
-    // Loading feedback na tabela
     const tbody = document.getElementById('tx-tbody');
     if (tbody) tbody.innerHTML = `<tr><td colspan="6"><div class="loader"><div class="spinner"></div></div></td></tr>`;
 
@@ -127,13 +136,12 @@ const App = {
       transactions: '💳 Transações',
       categories:   '🏷️ Categorias',
       goals:        '🎯 Metas',
-      reports:      '📈 Relatórios'
+      reports:      '📈 Relatórios',
+      settings:     '⚙️ Configurações'
     };
     document.getElementById('topbar-title').textContent = titles[page] || page;
 
-    // Scroll reset
     window.scrollTo({ top: 0, behavior: 'instant' });
-    document.querySelector('.main-content')?.scrollTo({ top: 0 });
 
     document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
     document.getElementById('page-' + page)?.classList.remove('hidden');
@@ -143,6 +151,7 @@ const App = {
     if (page === 'categories')   Categories.render();
     if (page === 'goals')        Goals.render();
     if (page === 'reports')      Reports.load();
+    if (page === 'settings')     Settings.render();
   },
 
   _loadTransactions() {
@@ -152,9 +161,8 @@ const App = {
   }
 };
 
-// ===== GLOBAL MODAL SETUP =====
+// ===== GLOBAL SETUP =====
 document.addEventListener('DOMContentLoaded', () => {
-  // Tema aplicado imediatamente (sem flash)
   Theme.init();
 
   document.querySelectorAll('.modal-overlay').forEach(overlay => {

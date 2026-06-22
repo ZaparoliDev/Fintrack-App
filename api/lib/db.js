@@ -1,20 +1,18 @@
 import { MongoClient } from 'mongodb';
 
 const uri = process.env.MONGODB_URI;
-let client;
+if (!uri) throw new Error('MONGODB_URI não definida.');
+
 let clientPromise;
-
-if (!uri) throw new Error('MONGODB_URI não definida nas variáveis de ambiente.');
-
 if (process.env.NODE_ENV === 'development') {
   if (!global._mongoClientPromise) {
-    client = new MongoClient(uri, { maxPoolSize: 10, serverSelectionTimeoutMS: 5000 });
-    global._mongoClientPromise = client.connect();
+    const c = new MongoClient(uri, { maxPoolSize: 10, serverSelectionTimeoutMS: 5000 });
+    global._mongoClientPromise = c.connect();
   }
   clientPromise = global._mongoClientPromise;
 } else {
-  client = new MongoClient(uri, { maxPoolSize: 10, serverSelectionTimeoutMS: 5000 });
-  clientPromise = client.connect();
+  const c = new MongoClient(uri, { maxPoolSize: 10, serverSelectionTimeoutMS: 5000 });
+  clientPromise = c.connect();
 }
 
 export async function getDb() {
