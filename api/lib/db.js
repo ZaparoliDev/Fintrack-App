@@ -1,4 +1,4 @@
-import { MongoClient } from 'mongodb';
+const { MongoClient } = require('mongodb');
 
 const uri = process.env.MONGODB_URI;
 if (!uri) throw new Error('MONGODB_URI não definida.');
@@ -6,7 +6,7 @@ if (!uri) throw new Error('MONGODB_URI não definida.');
 let cachedClient = null;
 let cachedDb = null;
 
-export async function getDb() {
+async function getDb() {
   // Reutiliza conexão existente
   if (cachedClient && cachedDb) {
     return cachedDb;
@@ -19,7 +19,9 @@ export async function getDb() {
   });
 
   cachedClient = await client.connect();
-  cachedDb = cachedClient.db(process.env.MONGODB_DB || 'fintrack');
+  cachedDb = client.db(process.env.MONGODB_DB || 'fintrack');
   
   return cachedDb;
 }
+
+module.exports = { getDb };
