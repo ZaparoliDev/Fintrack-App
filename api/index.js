@@ -1,11 +1,16 @@
 // ============================================
-// index.js - Versão 100% CommonJS
+// index.js - COM LOG PARA DEBUG
 // ============================================
 
-const { getDb } = require('../lib/db.js'); // <--- Agora é require normal
+console.log('🚀 Iniciando função serverless...');
+
+// Carrega a conexão (mas não executa ainda)
+const { getDb } = require('../lib/db.js');
 
 module.exports = async (req, res) => {
-  // 1. Configurações de CORS
+  console.log(`📥 Requisição recebida: ${req.method} ${req.url}`);
+
+  // 1. CORS
   res.setHeader('Access-Control-Allow-Origin', process.env.ALLOWED_ORIGIN || '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -16,14 +21,17 @@ module.exports = async (req, res) => {
   }
 
   try {
-    // 2. Conecta ao banco de dados
+    // 2. Conecta ao banco (AGORA SIM executa)
+    console.log('🔄 Tentando conectar ao MongoDB...');
     const db = await getDb();
+    console.log('✅ Conectado ao MongoDB com sucesso!');
+
     const { resource, id } = req.query;
     req.db = db;
     req.resource = resource;
     req.id = id;
 
-    // 3. Carrega as rotas
+    // 3. Carrega as rotas (apenas se o banco conectou)
     const authRoutes = require('./routes/auth');
     const transactionRoutes = require('./routes/transactions');
     const reportRoutes = require('./routes/reports');
@@ -49,10 +57,11 @@ module.exports = async (req, res) => {
         return res.status(404).json({ error: 'Recurso não encontrado' });
     }
   } catch (error) {
-    console.error('🔥 Erro fatal:', error);
-    return res.status(500).json({ 
-      error: 'Erro interno do servidor', 
-      detalhe: error.message 
+    // Isso vai capturar ERROS DE CONEXÃO e devolver uma mensagem clara
+    console.error('🔥 ERRO FATAL:', error);
+    return res.status(500).json({
+      error: 'Erro interno do servidor',
+      detalhe: error.message || 'Erro desconhecido'
     });
   }
 };
