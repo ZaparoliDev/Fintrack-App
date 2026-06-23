@@ -1,10 +1,53 @@
-const { MongoClient } = require('mongodb');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const { z } = require('zod');
+// ============================================
+// DIAGNÓSTICO DE DEPENDÊNCIAS
+// ============================================
+console.log('🚀 Iniciando index.js');
+
+let MongoClient, bcrypt, jwt, z, ObjectId;
+
+try {
+  const mongodb = require('mongodb');
+  MongoClient = mongodb.MongoClient;
+  ObjectId = mongodb.ObjectId;
+  console.log('✅ mongodb carregado');
+} catch (e) {
+  console.error('❌ Falha ao carregar mongodb:', e.message);
+}
+
+try {
+  bcrypt = require('bcryptjs');
+  console.log('✅ bcryptjs carregado');
+} catch (e) {
+  console.error('❌ Falha ao carregar bcryptjs:', e.message);
+}
+
+try {
+  jwt = require('jsonwebtoken');
+  console.log('✅ jsonwebtoken carregado');
+} catch (e) {
+  console.error('❌ Falha ao carregar jsonwebtoken:', e.message);
+}
+
+try {
+  z = require('zod');
+  console.log('✅ zod carregado');
+} catch (e) {
+  console.error('❌ Falha ao carregar zod:', e.message);
+}
+
+// Se alguma dependência faltar, retorna erro claro
+if (!MongoClient || !bcrypt || !jwt || !z) {
+  module.exports = (req, res) => {
+    res.status(500).json({
+      error: 'Dependências não instaladas',
+      detalhe: 'Verifique se o package.json está correto e se a Vercel instalou as dependências.'
+    });
+  };
+  return;
+}
 
 // ============================================
-// 1. CONEXÃO DIRETA COM O MONGODB (sem lib externa)
+// CONEXÃO COM O BANCO (dentro do próprio arquivo)
 // ============================================
 let cachedClient = null;
 let cachedDb = null;
@@ -14,7 +57,7 @@ async function getDb() {
 
   const uri = process.env.MONGODB_URI;
   if (!uri) {
-    throw new Error('MONGODB_URI não definida nas variáveis de ambiente');
+    throw new Error('MONGODB_URI não definida');
   }
 
   const client = new MongoClient(uri, {
@@ -28,7 +71,7 @@ async function getDb() {
 }
 
 // ============================================
-// 2. VALIDAÇÃO (Zod)
+// VALIDAÇÃO (Zod)
 // ============================================
 const registerSchema = z.object({
   name: z.string().min(2),
@@ -42,14 +85,7 @@ const loginSchema = z.object({
 });
 
 // ============================================
-// 3. COOKIES
-// ============================================
-function setAuthCookie(res, token) {
-  res.setHeader('Set-Cookie', `token=${token}; HttpOnly; Secure; SameSite=Strict; Max-Age=604800; Path=/`);
-}
-
-// ============================================
-// 4. HANDLER PRINCIPAL
+// HANDLER PRINCIPAL
 // ============================================
 module.exports = async (req, res) => {
   // CORS
@@ -63,14 +99,12 @@ module.exports = async (req, res) => {
   }
 
   try {
-    // Conecta ao banco
+    console.log('📥 Requisição:', req.method, req.url);
     const db = await getDb();
     const users = db.collection('users');
-
-    // Pega o caminho sem o /api
     const path = req.url.split('?')[0].replace(/^\/api/, '');
 
-    // --- ROTA: REGISTRO ---
+    // --- REGISTRO ---
     if (req.method === 'POST' && path === '/auth/register') {
       const { name, email, password } = registerSchema.parse(req.body);
       const existing = await users.findOne({ email });
@@ -78,28 +112,14 @@ module.exports = async (req, res) => {
         return res.status(400).json({ error: 'Email já cadastrado' });
       }
       const hashed = await bcrypt.hash(password, 12);
-      const result = await users.insertOne({
-        name,
-        email,
-        password: hashed,
-        createdAt: new Date()
-      });
-      const user = await users.findOne(
-        { _id: result.insertedId },
-        { projection: { password: 0 } }
-      );
-      const token = jwt.sign(
-        { userId: user._id.toString() },
-        process.env.JWT_SECRET,
-        { expiresIn: '7d' }
-      );
-      setAuthCookie(res, token);
-      return res.status(201).json({
-        user: { id: user._id, name: user.name, email: user.email }
-      });
+      const result = await users.insertOne({ name, email, password: hashed, createdAt: new Date() });
+      const user = await users.findOne({ _id: result.insertedId }, { projection: { password: 0 } });
+      const token = jwt.sign({ userId: user._id.toString() }, process.env.JWT_SECRET, { expiresIn: '7d' });
+      res.setHeader('Set-Cookie', `token=${token}; HttpOnly; Secure; SameSite=Strict; Max-Age=604800; Path=/`);
+      return res.status(201).json({ user: { id: user._id, name: user.name, email: user.email } });
     }
 
-    // --- ROTA: LOGIN ---
+    // --- LOGIN ---
     if (req.method === 'POST' && path === '/auth/login') {
       const { email, password } = loginSchema.parse(req.body);
       const user = await users.findOne({ email });
@@ -110,49 +130,37 @@ module.exports = async (req, res) => {
       if (!valid) {
         return res.status(401).json({ error: 'Email ou senha inválidos' });
       }
-      const token = jwt.sign(
-        { userId: user._id.toString() },
-        process.env.JWT_SECRET,
-        { expiresIn: '7d' }
-      );
-      setAuthCookie(res, token);
-      return res.json({
-        user: { id: user._id, name: user.name, email: user.email }
-      });
+      const token = jwt.sign({ userId: user._id.toString() }, process.env.JWT_SECRET, { expiresIn: '7d' });
+      res.setHeader('Set-Cookie', `token=${token}; HttpOnly; Secure; SameSite=Strict; Max-Age=604800; Path=/`);
+      return res.json({ user: { id: user._id, name: user.name, email: user.email } });
     }
 
-    // --- ROTA: LOGOUT ---
+    // --- LOGOUT ---
     if (req.method === 'POST' && path === '/auth/logout') {
       res.setHeader('Set-Cookie', 'token=; HttpOnly; Secure; SameSite=Strict; Max-Age=0; Path=/');
       return res.json({ message: 'Logout realizado' });
     }
 
-    // --- ROTA: ME ---
+    // --- ME ---
     if (req.method === 'GET' && path === '/auth/me') {
       const token = req.headers.cookie?.split('; ').find(r => r.startsWith('token='))?.split('=')[1];
       if (!token) {
         return res.status(401).json({ error: 'Não autenticado' });
       }
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      const user = await users.findOne(
-        { _id: new require('mongodb').ObjectId(decoded.userId) },
-        { projection: { password: 0 } }
-      );
+      const user = await users.findOne({ _id: new ObjectId(decoded.userId) }, { projection: { password: 0 } });
       if (!user) {
         return res.status(401).json({ error: 'Usuário não encontrado' });
       }
-      return res.json({
-        user: { id: user._id, name: user.name, email: user.email }
-      });
+      return res.json({ user: { id: user._id, name: user.name, email: user.email } });
     }
 
-    // Se nenhuma rota bater
     return res.status(404).json({ error: 'Rota não encontrada' });
 
   } catch (error) {
-    console.error('❌ Erro no servidor:', error);
+    console.error('❌ Erro no handler:', error);
     return res.status(500).json({
-      error: 'Erro interno do servidor',
+      error: 'Erro interno',
       detalhe: error.message || 'Erro desconhecido'
     });
   }
