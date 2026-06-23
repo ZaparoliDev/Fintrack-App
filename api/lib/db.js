@@ -1,20 +1,23 @@
 const { MongoClient } = require('mongodb');
 
 const uri = process.env.MONGODB_URI;
-if (!uri) throw new Error('MONGODB_URI não definida.');
+if (!uri) {
+  console.error('MONGODB_URI não definida nas variáveis de ambiente');
+  throw new Error('MONGODB_URI não definida.');
+}
 
 let cachedClient = null;
 let cachedDb = null;
 
 async function getDb() {
-  // Reutiliza conexão existente
+  // Se já tiver conexão, reutiliza
   if (cachedClient && cachedDb) {
     return cachedDb;
   }
 
-  // Cria nova conexão se não existe
+  // Cria nova conexão
   const client = new MongoClient(uri, {
-    maxPoolSize: 1, // IMPORTANTE: serverless precisa ser 1
+    maxPoolSize: 1,
     serverSelectionTimeoutMS: 5000,
   });
 
