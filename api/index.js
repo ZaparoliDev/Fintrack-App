@@ -1,4 +1,4 @@
-const { connectToDatabase } = require('./_lib/mongodb');
+const { connectToDatabase } = require('../lib/db');
 const authRoutes = require('./routes/auth');
 const transactionRoutes = require('./routes/transactions');
 const reportRoutes = require('./routes/reports');
