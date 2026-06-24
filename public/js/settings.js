@@ -1,113 +1,85 @@
-// ===== SETTINGS MODULE =====
 const Settings = {
   _data: {},
-
-  load(data) {
-    this._data = data || {};
-  },
-
+  load(data) { this._data = data||{}; },
   render() {
-    const s    = this._data;
-    const user = Store.get('user');
-
-    // Perfil
-    const nameEl   = document.getElementById('settings-username');
-    const emailEl  = document.getElementById('settings-useremail');
-    const avatarEl = document.getElementById('settings-avatar');
-    if (nameEl)   nameEl.textContent  = user?.name  || '—';
-    if (emailEl)  emailEl.textContent = user?.email || '—';
-    if (avatarEl) avatarEl.textContent = Utils.initials(user?.name || '?');
-
-    // Tema
+    const s=this._data, user=Store.get('user');
+    const el=id=>document.getElementById(id);
+    if(el('settings-username'))  el('settings-username').textContent  = user?.name||'—';
+    if(el('settings-useremail')) el('settings-useremail').textContent = user?.email||'—';
+    if(el('settings-avatar'))    el('settings-avatar').textContent    = Utils.initials(user?.name||'?');
     this._updateThemeToggle();
-
-    // CLT
-    const isActive = !!s.cltMode;
-    this._setCltUI(isActive);
-
-    if (isActive) {
-      const salEl = document.getElementById('clt-salary-day');
-      const valEl = document.getElementById('clt-vale-day');
-      if (salEl) salEl.value = s.salaryDay || 5;
-      if (valEl) valEl.value = s.valeDay   || 20;
+    const active = !!s.cltMode;
+    this._setCltUI(active);
+    if (active) {
+      if(el('clt-salary-day'))    el('clt-salary-day').value    = s.salaryDay||5;
+      if(el('clt-vale-day'))      el('clt-vale-day').value      = s.valeDay||20;
+      if(el('clt-salary-type'))   el('clt-salary-type').value   = s.salaryDayType||'fixed';
+      if(el('clt-vale-type'))     el('clt-vale-type').value     = s.valeDayType||'fixed';
+      this._updateDayTypeUI('salary', s.salaryDayType||'fixed');
+      this._updateDayTypeUI('vale',   s.valeDayType||'fixed');
     }
   },
-
   _setCltUI(active) {
-    const toggle   = document.getElementById('clt-master-toggle');
-    const section  = document.getElementById('clt-days-section');
-    const inactive = document.getElementById('clt-inactive-msg');
-
-    if (toggle)   toggle.classList.toggle('on', active);
-    if (section)  section.classList.toggle('show', active);
-    if (inactive) inactive.style.display = active ? 'none' : 'block';
+    const el=id=>document.getElementById(id);
+    el('clt-master-toggle')?.classList.toggle('on', active);
+    el('clt-days-section')?.classList.toggle('show', active);
+    if(el('clt-inactive-msg')) el('clt-inactive-msg').style.display = active?'none':'block';
     this._updateSidebarBadge(active);
   },
-
   _updateSidebarBadge(active) {
-    const badge = document.getElementById('clt-sidebar-badge');
-    if (!badge) return;
-    badge.classList.toggle('hidden', !active);
+    document.getElementById('clt-sidebar-badge')?.classList.toggle('hidden', !active);
   },
-
   _updateThemeToggle() {
-    const toggle = document.getElementById('theme-toggle-settings');
-    if (toggle) toggle.classList.toggle('on', Theme.current === 'dark');
+    // Sincroniza AMBOS os toggles de tema
+    const isDark = Theme.current === 'dark';
+    document.getElementById('theme-toggle-settings')?.classList.toggle('on', isDark);
+    document.getElementById('btn-theme').textContent = isDark ? '☀️' : '🌙';
   },
-
+  _updateDayTypeUI(which, type) {
+    const hint = document.getElementById(`clt-${which}-day-hint`);
+    if (!hint) return;
+    if (type === 'workday') {
+      hint.textContent = `Ex: "5" = 5º dia útil do mês`;
+    } else {
+      hint.textContent = `Dia fixo do mês (entre 1 e 28)`;
+    }
+  },
   toggleTheme() {
     Theme.toggle();
     this._updateThemeToggle();
   },
-
-  async toggleClt(forceOff = false) {
-    const current = !!this._data.cltMode;
-    const next    = forceOff ? false : !current;
-
-    const salDay = parseInt(document.getElementById('clt-salary-day')?.value) || 5;
-    const valDay = parseInt(document.getElementById('clt-vale-day')?.value)   || 20;
-
-    const update = {
-      cltMode:   next,
-      salaryDay: next ? salDay : (this._data.salaryDay || 5),
-      valeDay:   next ? valDay : (this._data.valeDay   || 20)
-    };
-
+  async toggleClt(forceOff=false) {
+    const next = forceOff ? false : !this._data.cltMode;
+    const salDay = parseInt(document.getElementById('clt-salary-day')?.value)||5;
+    const valDay = parseInt(document.getElementById('clt-vale-day')?.value)||20;
+    const salType = document.getElementById('clt-salary-type')?.value||'fixed';
+    const valType = document.getElementById('clt-vale-type')?.value||'fixed';
     try {
-      const saved = await API.saveSettings(update);
+      const saved = await API.saveSettings({ cltMode:next, salaryDay:salDay, valeDay:valDay, salaryDayType:salType, valeDayType:valType });
       this._data = { ...this._data, ...saved };
       Store.set('settings', this._data);
       this._setCltUI(next);
-      Utils.toast(
-        next ? '👔 Modo CLT Premium ativado!' : 'Modo CLT desativado.',
-        next ? 'success' : 'info'
-      );
-    } catch (err) {
-      Utils.toast(err.message, 'error');
-    }
+      Utils.toast(next?'👔 Modo CLT Premium ativado!':'Modo CLT desativado.', next?'success':'info');
+    } catch(err) { Utils.toast(err.message,'error'); }
   },
-
+  onDayTypeChange(which, type) {
+    this._updateDayTypeUI(which, type);
+  },
   async saveCltDays() {
-    const salDay = parseInt(document.getElementById('clt-salary-day')?.value);
-    const valDay = parseInt(document.getElementById('clt-vale-day')?.value);
-
-    if (!salDay || salDay < 1 || salDay > 28) {
-      Utils.toast('Dia do salário deve ser entre 1 e 28.', 'error'); return;
-    }
-    if (!valDay || valDay < 1 || valDay > 28) {
-      Utils.toast('Dia do vale deve ser entre 1 e 28.', 'error'); return;
-    }
-    if (salDay === valDay) {
-      Utils.toast('Os dias do salário e vale não podem ser iguais.', 'error'); return;
-    }
-
+    const salDay  = parseInt(document.getElementById('clt-salary-day')?.value);
+    const valDay  = parseInt(document.getElementById('clt-vale-day')?.value);
+    const salType = document.getElementById('clt-salary-type')?.value||'fixed';
+    const valType = document.getElementById('clt-vale-type')?.value||'fixed';
+    if (!salDay||salDay<1||salDay>28) { Utils.toast('Dia do salário deve ser entre 1 e 28.','error'); return; }
+    if (!valDay||valDay<1||valDay>28) { Utils.toast('Dia do vale deve ser entre 1 e 28.','error'); return; }
+    if (salDay===valDay&&salType===valType) { Utils.toast('Os dias do salário e vale não podem ser iguais.','error'); return; }
     try {
-      const saved = await API.saveSettings({ salaryDay: salDay, valeDay: valDay });
+      const saved = await API.saveSettings({ salaryDay:salDay, valeDay:valDay, salaryDayType:salType, valeDayType:valType });
       this._data = { ...this._data, ...saved };
       Store.set('settings', this._data);
-      Utils.toast(`Dias salvos: Salário dia ${salDay}, Vale dia ${valDay} ✓`, 'success');
-    } catch (err) {
-      Utils.toast(err.message, 'error');
-    }
+      const salLabel = salType==='workday' ? `${salDay}º dia útil` : `dia ${salDay}`;
+      const valLabel = valType==='workday' ? `${valDay}º dia útil` : `dia ${valDay}`;
+      Utils.toast(`Salário: ${salLabel} · Vale: ${valLabel} ✓`,'success');
+    } catch(err) { Utils.toast(err.message,'error'); }
   }
 };
