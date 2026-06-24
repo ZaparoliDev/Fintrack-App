@@ -16,7 +16,7 @@ function cors(res) {
 // ─── EMAIL (Resend) ───
 async function sendVerificationEmail(email, name, token) {
   if (!RESEND_KEY) return; // skip se não configurado
-  const url = `${process.env.APP_URL || 'https://fintrack-app.vercel.app'}/verify?token=${token}`;
+  const url = `${process.env.APP_URL || 'https://fintrack-six-xi.vercel.app'}/verify?token=${token}`;
   await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
