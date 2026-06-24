@@ -1426,3 +1426,165 @@ canvas { max-width: 100%; }
 }
 
 .export-actions { display: flex; gap: 10px; }
+
+/* ===== LOADING OVERLAY (troca de mês / reload) ===== */
+#loading-overlay {
+  position: fixed; inset: 0;
+  background: rgba(10,12,18,0.82);
+  backdrop-filter: blur(4px);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 16px;
+  z-index: 800;
+  opacity: 0; pointer-events: none;
+  transition: opacity 180ms ease;
+}
+#loading-overlay.show { opacity: 1; pointer-events: all; }
+html.light #loading-overlay { background: rgba(240,242,248,0.85); }
+.loading-spinner {
+  width: 44px; height: 44px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.55s linear infinite;
+}
+.loading-text { font-size: 0.875rem; color: var(--text-secondary); font-weight: 500; }
+
+/* ===== EMAIL VERIFICATION BANNER ===== */
+.verify-banner {
+  background: linear-gradient(90deg, rgba(251,191,36,0.12), rgba(251,191,36,0.06));
+  border: 1px solid rgba(251,191,36,0.3);
+  border-radius: var(--radius-md);
+  padding: 10px 16px;
+  display: flex; align-items: center; gap: 10px;
+  font-size: 0.82rem; margin-bottom: 16px;
+}
+.verify-banner-text { flex: 1; color: var(--amber); font-weight: 500; }
+.verify-banner-btn {
+  background: rgba(251,191,36,0.15); border: 1px solid rgba(251,191,36,0.3);
+  color: var(--amber); border-radius: var(--radius-sm);
+  padding: 5px 12px; font-size: 0.78rem; font-weight: 700;
+  cursor: pointer; font-family: inherit; transition: var(--transition);
+}
+.verify-banner-btn:hover { background: rgba(251,191,36,0.25); }
+
+/* ===== DEBTS PAGE ===== */
+.debts-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px,1fr)); gap: 16px; }
+.debt-card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 20px;
+  transition: var(--transition); position: relative; overflow: hidden;
+}
+.debt-card:hover { border-color: var(--text-muted); transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.debt-card-accent {
+  position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+.debt-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 14px; }
+.debt-icon-wrap { width: 44px; height: 44px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0; }
+.debt-name { font-size: 0.95rem; font-weight: 700; }
+.debt-installment-label { font-size: 0.74rem; color: var(--text-secondary); margin-top: 2px; }
+.debt-progress-bar { height: 6px; background: var(--bg-surface); border-radius: 99px; margin: 12px 0 8px; overflow: hidden; }
+.debt-progress-fill { height: 100%; border-radius: 99px; transition: width 0.7s ease; }
+.debt-amounts { display: flex; justify-content: space-between; font-size: 0.8rem; }
+.debt-monthly { font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--red); }
+.debt-remaining { color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+.debt-summary {
+  margin-top: 4px; padding-top: 10px;
+  border-top: 1px solid var(--border-soft);
+  display: flex; justify-content: space-between;
+  font-size: 0.75rem; color: var(--text-muted);
+}
+
+/* Totais de dívidas no dashboard/reports */
+.debt-total-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px;
+  background: rgba(240,77,77,0.06); border: 1px solid rgba(240,77,77,0.15);
+  border-radius: var(--radius-md); margin-top: 10px;
+  font-size: 0.82rem;
+}
+.debt-total-label { color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
+.debt-total-value { font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--red); }
+
+/* ===== IMPORT PANEL ===== */
+.import-drop-zone {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius-lg);
+  padding: 36px 24px; text-align: center;
+  cursor: pointer; transition: var(--transition);
+  background: var(--bg-surface);
+}
+.import-drop-zone:hover, .import-drop-zone.drag-over {
+  border-color: var(--accent); background: var(--blue-dim);
+}
+.import-drop-icon { font-size: 2.4rem; margin-bottom: 10px; }
+.import-drop-title { font-size: 0.95rem; font-weight: 700; margin-bottom: 4px; }
+.import-drop-sub { font-size: 0.8rem; color: var(--text-secondary); line-height: 1.5; }
+.import-preview {
+  margin-top: 14px; max-height: 200px; overflow-y: auto;
+  background: var(--bg-surface); border: 1px solid var(--border);
+  border-radius: var(--radius-md); font-size: 0.78rem;
+}
+.import-preview table { width: 100%; }
+.import-preview th { padding: 7px 10px; background: var(--bg-hover); text-align: left; font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; position: sticky; top: 0; }
+.import-preview td { padding: 6px 10px; border-bottom: 1px solid var(--border-soft); }
+.import-format-tabs { display: flex; gap: 8px; margin-bottom: 14px; }
+.import-tab { flex: 1; padding: 8px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); background: transparent; color: var(--text-secondary); font-family: inherit; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: var(--transition); text-align: center; }
+.import-tab.active { border-color: var(--accent); color: var(--accent); background: var(--blue-dim); }
+
+/* CLT business days badge */
+.clt-bd-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 0.7rem; font-weight: 700; background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(251,191,36,0.25); padding: 2px 8px; border-radius: 99px; margin-left: 8px; }
+
+/* Confirm password strength */
+.pwd-strength { height: 3px; border-radius: 99px; margin-top: 6px; transition: var(--transition); }
+.pwd-strength.weak   { background: var(--red);   width: 33%; }
+.pwd-strength.medium { background: var(--amber);  width: 66%; }
+.pwd-strength.strong { background: var(--green);  width: 100%; }
+.pwd-match { font-size: 0.72rem; margin-top: 4px; font-weight: 600; }
+.pwd-match.ok  { color: var(--green); }
+.pwd-match.bad { color: var(--red); }
+
+/* ===== PAGE LOADER ===== */
+#page-loader {
+  position:fixed;inset:0;background:rgba(0,0,0,0.55);backdrop-filter:blur(4px);
+  display:flex;align-items:center;justify-content:center;z-index:800;
+  opacity:0;pointer-events:none;transition:opacity 200ms ease;
+}
+#page-loader.show{opacity:1;pointer-events:all;}
+.page-loader-inner{display:flex;flex-direction:column;align-items:center;gap:14px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:30px 40px;}
+.page-loader-inner .spinner{width:36px;height:36px;border-width:3px;}
+.page-loader-inner span{font-size:0.875rem;color:var(--text-secondary);font-weight:500;}
+
+/* ===== VERIFY NOTICE ===== */
+.verify-notice{background:var(--blue-dim);border:1px solid rgba(79,142,247,0.3);border-radius:var(--radius-md);padding:12px 14px;font-size:0.82rem;color:var(--blue);margin-bottom:14px;line-height:1.5;}
+.verify-sent{background:var(--green-dim);border:1px solid rgba(34,197,94,0.3);border-radius:var(--radius-md);padding:20px;text-align:center;color:var(--green);}
+.verify-sent-icon{font-size:2rem;margin-bottom:8px;}
+.verify-sent-title{font-weight:700;margin-bottom:4px;}
+.verify-sent-sub{font-size:0.8rem;color:var(--text-secondary);}
+
+/* ===== DEBTS ===== */
+.debts-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:16px;}
+.debt-summary-bar{display:flex;align-items:center;justify-content:space-between;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);padding:12px 18px;margin-bottom:16px;font-size:0.85rem;color:var(--text-secondary);}
+.debt-summary-bar strong{color:var(--text-primary);font-family:'JetBrains Mono',monospace;}
+.debt-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px 20px;transition:var(--transition);}
+.debt-card:hover{border-color:var(--text-muted);transform:translateY(-2px);box-shadow:var(--shadow-md);}
+.debt-card.done{opacity:0.65;}
+.debt-card-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px;}
+.debt-icon{width:40px;height:40px;border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0;}
+.debt-name{font-size:0.9rem;font-weight:700;margin-bottom:2px;}
+.debt-parcela{font-size:0.75rem;color:var(--text-secondary);}
+
+/* ===== IMPORT ===== */
+.import-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;z-index:400;padding:16px;opacity:0;pointer-events:none;transition:opacity 220ms ease;}
+.import-overlay.open{opacity:1;pointer-events:all;}
+.import-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-xl);width:100%;max-width:540px;max-height:92vh;overflow-y:auto;box-shadow:var(--shadow-lg);transform:scale(0.95) translateY(10px);transition:transform 240ms cubic-bezier(0.34,1.56,0.64,1);}
+.import-overlay.open .import-card{transform:scale(1) translateY(0);}
+.import-preview-info{font-size:0.78rem;color:var(--text-secondary);margin-bottom:10px;}
+.import-table-wrap{border:1px solid var(--border);border-radius:var(--radius-md);overflow:hidden;max-height:200px;overflow-y:auto;}
+
+/* ===== CLT DAY TYPE ===== */
+.clt-day-type-select{width:100%;background:var(--bg-surface);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;color:var(--text-primary);font-family:inherit;font-size:0.82rem;outline:none;cursor:pointer;margin-bottom:6px;}
+.clt-day-type-select:focus{border-color:var(--accent);}
+
+/* ===== SIDEBAR CLT BADGE ===== */
+.clt-sidebar-badge{margin-left:auto;font-size:0.6rem;font-weight:800;background:linear-gradient(135deg,var(--blue),var(--purple));color:#fff;padding:2px 7px;border-radius:99px;letter-spacing:0.04em;}
