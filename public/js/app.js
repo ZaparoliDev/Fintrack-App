@@ -7,29 +7,8 @@ const App = {
   currentPage: 'dashboard',
   async init() {
     Auth.init();
-    // Verificação de e-mail via URL
-    const params = new URLSearchParams(location.search);
-    const vtoken = params.get('token');
-    if (vtoken) { await this._handleVerify(vtoken); return; }
     if (Auth.restore()) { await this.showApp(); }
     else { this._hideLoader(); this.showAuth(); }
-  },
-  async _handleVerify(token) {
-    try {
-      const data = await API.verifyEmail(token);
-      Auth.setSession && Auth.setSession(data) || (() => {
-        localStorage.setItem('ft_token', data.token);
-        localStorage.setItem('ft_user', JSON.stringify(data.user));
-        Store.set('user', data.user);
-      })();
-      history.replaceState({},'','/');
-      await this.showApp();
-      Utils.toast('E-mail confirmado! Bem-vindo ao Fintrack 🎉','success');
-    } catch(err) {
-      this._hideLoader();
-      this.showAuth();
-      Utils.toast('Link de verificação inválido ou expirado.','error');
-    }
   },
   _hideLoader() {
     const el=document.getElementById('global-loader');
@@ -46,14 +25,13 @@ const App = {
     document.getElementById('user-name').textContent   = user.name;
     document.getElementById('user-email').textContent  = user.email;
     document.getElementById('user-avatar').textContent = Utils.initials(user.name);
-
     Utils.showPageLoader('Carregando seus dados...');
-    const [,,,, settings]=await Promise.all([
+    const [,,,,settings]=await Promise.all([
       Categories.load(), Transactions.load(), Goals.load(), Debts.load(),
       API.getSettings().catch(()=>({}))
     ]);
     Settings.load(settings);
-    Store.set('settings', settings);
+    Store.set('settings',settings);
     Theme.applyFromSettings(settings);
     Settings._updateSidebarBadge(!!settings.cltMode);
     Utils.hidePageLoader();
@@ -62,8 +40,8 @@ const App = {
     this.initMonthPicker();
     this.initMobileMenu();
     this.navigate('dashboard');
-    if (!settings.cltOnboardingDone) setTimeout(()=>Onboarding.show(), 1800);
-    else if (settings.cltMode)       setTimeout(()=>Payday.check(settings), 1500);
+    if (!settings.cltOnboardingDone) setTimeout(()=>Onboarding.show(),1800);
+    else if (settings.cltMode)       setTimeout(()=>Payday.check(settings),1500);
   },
   initNav() {
     document.querySelectorAll('.nav-item[data-page]').forEach(el=>{
@@ -104,7 +82,7 @@ const App = {
   navigate(page) {
     this.currentPage=page;
     document.querySelectorAll('.nav-item[data-page]').forEach(el=>el.classList.toggle('active',el.dataset.page===page));
-    const titles={ dashboard:'📊 Dashboard', transactions:'💳 Transações', categories:'🏷️ Categorias', goals:'🎯 Metas', reports:'📈 Relatórios', settings:'⚙️ Configurações', debts:'💳 Dívidas de Crédito' };
+    const titles={ dashboard:'📊 Dashboard', transactions:'💳 Transações', categories:'🏷️ Categorias', goals:'🎯 Metas', reports:'📈 Relatórios', settings:'⚙️ Configurações', debts:'🏦 Dívidas de Crédito' };
     document.getElementById('topbar-title').textContent=titles[page]||page;
     window.scrollTo({ top:0, behavior:'instant' });
     document.querySelectorAll('.page').forEach(p=>p.classList.add('hidden'));
