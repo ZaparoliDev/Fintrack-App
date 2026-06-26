@@ -1,18 +1,10 @@
-import { MongoClient } from 'mongodb';
-const uri = process.env.MONGODB_URI;
-if (!uri) throw new Error('MONGODB_URI não definida.');
-let clientPromise;
-if (process.env.NODE_ENV === 'development') {
-  if (!global._mongoClientPromise) {
-    const c = new MongoClient(uri, { maxPoolSize:10, serverSelectionTimeoutMS:5000 });
-    global._mongoClientPromise = c.connect();
-  }
-  clientPromise = global._mongoClientPromise;
-} else {
-  const c = new MongoClient(uri, { maxPoolSize:10, serverSelectionTimeoutMS:5000 });
-  clientPromise = c.connect();
-}
-export async function getDb() {
-  const c = await clientPromise;
-  return c.db(process.env.MONGODB_DB || 'fintrack');
+import { createClient } from '@supabase/supabase-js';
+const url = process.env.SUPABASE_URL;
+const key = process.env.SUPABASE_SERVICE_KEY;
+if (!url) throw new Error('SUPABASE_URL não definida.');
+if (!key) throw new Error('SUPABASE_SERVICE_KEY não definida.');
+let _client;
+export function getDb() {
+  if (!_client) _client = createClient(url, key, { auth: { persistSession: false } });
+  return _client;
 }
