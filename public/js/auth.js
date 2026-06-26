@@ -24,9 +24,6 @@ const Auth = {
       this.setSession(data);
       App.showApp();
     } catch(err) {
-      if (err.message.includes('verificado')) {
-        document.getElementById('verify-notice')?.classList.remove('hidden');
-      }
       Utils.toast(err.message,'error');
     } finally { btn.disabled=false; btn.textContent='Entrar'; }
   },
@@ -43,14 +40,10 @@ const Auth = {
     btn.disabled=true; btn.textContent='Criando conta...';
     try {
       const data = await API.register({ name, email, password: pass, confirmPassword: confirm });
-      if (data.needsVerification) {
-        document.getElementById('form-register').classList.add('hidden');
-        document.getElementById('verify-sent-msg').classList.remove('hidden');
-      } else {
-        this.setSession(data);
-        App.showApp();
-      }
-    } catch(err) { Utils.toast(err.message,'error');
+      this.setSession(data);
+      App.showApp();
+    } catch(err) {
+      Utils.toast(err.message,'error');
     } finally { btn.disabled=false; btn.textContent='Criar conta'; }
   },
   setSession({ token, user }) {
