@@ -10,3 +10,4 @@ export function getDb() {
   if (!_client) _client = createClient(url, key, { auth: { persistSession: false } });
   return _client;
 }
+
