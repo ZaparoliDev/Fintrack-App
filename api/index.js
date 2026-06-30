@@ -4,6 +4,13 @@ import { getDb } from './lib/db.js';
 import { signToken, requireAuth } from './lib/auth.js';
 
 const CORS = process.env.ALLOWED_ORIGIN || '*';
+
+// Retorna o último dia real do mês (28/29/30/31), evitando datas inválidas
+// como "2026-06-31" que não existem e quebram a query no Postgres.
+function lastDayOfMonth(year, month) {
+  return new Date(Number(year), Number(month), 0).getDate();
+}
+
 function cors(res) {
   res.setHeader('Access-Control-Allow-Origin', CORS);
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
@@ -47,7 +54,8 @@ async function txList(req, res, user) {
   if (category) q = q.eq('category_id', category);
   if (month && year) {
     const m = String(+month).padStart(2, '0');
-    q = q.gte('date', `${year}-${m}-01`).lte('date', `${year}-${m}-31`);
+    const lastDay = String(lastDayOfMonth(year, month)).padStart(2, '0');
+    q = q.gte('date', `${year}-${m}-01`).lte('date', `${year}-${m}-${lastDay}`);
   }
   const { data, error } = await q;
   if (error) return res.status(500).json({ error: error.message });
@@ -96,7 +104,7 @@ async function txExport(req, res, user) {
   const { month, year } = req.query;
   const db = getDb();
   let q = db.from('transactions').select('*').eq('user_id', user.id).order('date', { ascending: true }).limit(5000);
-  if (month && year) { const m = String(+month).padStart(2,'0'); q = q.gte('date', `${year}-${m}-01`).lte('date', `${year}-${m}-31`); }
+  if (month && year) { const m = String(+month).padStart(2,'0'); const lastDay = String(lastDayOfMonth(year, month)).padStart(2,'0'); q = q.gte('date', `${year}-${m}-01`).lte('date', `${year}-${m}-${lastDay}`); }
   const { data, error } = await q;
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
@@ -300,7 +308,8 @@ async function reportSummary(req, res, user) {
   const { month, year } = req.query;
   const m = String(+month||new Date().getMonth()+1).padStart(2,'0');
   const y = year||new Date().getFullYear();
-  const start=`${y}-${m}-01`, end=`${y}-${m}-31`;
+  const lastDay = String(lastDayOfMonth(y, m)).padStart(2,'0');
+  const start=`${y}-${m}-01`, end=`${y}-${m}-${lastDay}`;
   const db = getDb();
   const [{ data: txs },{ data: debts }] = await Promise.all([
     db.from('transactions').select('*').eq('user_id',user.id).gte('date',start).lte('date',end),
