@@ -41,9 +41,10 @@ const Reports = {
     if(!expenses.length){wrap.innerHTML='<div class="empty-state" style="padding:30px"><div class="empty-icon">📊</div><div class="empty-title">Sem despesas</div></div>';return;}
     wrap.innerHTML='<canvas id="chart-donut"></canvas><div id="donut-legend" class="donut-legend"></div>';
     const canvas=document.getElementById('chart-donut');
-    const labels=expenses.map(x=>{const c=cats.find(c=>c._id===x._id.categoryId);return c?c.icon+' '+c.name:'📦 Outros';});
+    // CORRIGIDO: c.id e x._id.categoryId (vem do backend já formatado)
+    const labels=expenses.map(x=>{const c=cats.find(c=>String(c.id)===String(x._id.categoryId));return c?c.icon+' '+c.name:'📦 Outros';});
     const values=expenses.map(x=>x.total);
-    const colors=expenses.map((x,i)=>{const c=cats.find(c=>c._id===x._id.categoryId);return c?.color||`hsl(${i*40},70%,55%)`;});
+    const colors=expenses.map((x,i)=>{const c=cats.find(c=>String(c.id)===String(x._id.categoryId));return c?.color||`hsl(${i*40},70%,55%)`;});
     if(this.charts.donut) this.charts.donut.destroy();
     this.charts.donut=new Chart(canvas,{type:'doughnut',data:{labels,datasets:[{data:values,backgroundColor:colors,borderWidth:0,hoverOffset:10}]},options:{responsive:true,cutout:'70%',plugins:{legend:{display:false}}}});
     const total=values.reduce((a,b)=>a+b,0);

@@ -29,7 +29,8 @@ const Dashboard = {
     if (el('dash-income-mini'))  el('dash-income-mini').textContent  = Utils.formatCurrency(income);
     if (el('dash-expense-mini')) el('dash-expense-mini').textContent = Utils.formatCurrency(expense);
     if (el('dash-tx-count'))     el('dash-tx-count').textContent     = txs.length;
-    if (el('dash-goals-count'))  el('dash-goals-count').textContent  = goals.filter(g=>Utils.pct(g.currentAmount,g.targetAmount)<100).length;
+    // CORRIGIDO: current_amount e target_amount (snake_case)
+    if (el('dash-goals-count'))  el('dash-goals-count').textContent  = goals.filter(g=>Utils.pct(g.current_amount,g.target_amount)<100).length;
     if (el('dash-debts-count'))  el('dash-debts-count').textContent  = debts.filter(d=>d.active!==false).length;
     if (el('dash-avg-expense')) {
       const expTxs = txs.filter(t=>t.type==='expense');
@@ -41,7 +42,6 @@ const Dashboard = {
       el('dash-month-bar-fill').className = 'month-bar-fill'+(pct>90?' danger':pct>70?' warning':'');
       if (el('dash-month-pct')) el('dash-month-pct').textContent = pct+'% gasto';
     }
-    // Reports page
     const set = (id, val, cls) => { const e=el(id); if(!e)return; e.textContent=val; if(cls)e.className=cls; };
     set('rep-income-r',  Utils.formatCurrency(income));
     set('rep-expense-r', Utils.formatCurrency(expense));
@@ -77,12 +77,12 @@ const Dashboard = {
   },
 
   renderDebtWidget(debtInstallments) {
-    // Mostra dívidas ativas no dashboard com total mensal
     const el = document.getElementById('dash-debt-widget');
     if (!el) return;
     const active = debtInstallments.filter(d=>d.remaining>0);
     if (!active.length) { el.style.display='none'; return; }
     el.style.display='block';
+    // CORRIGIDO: installmentAmount vem do backend formatado corretamente no reportSummary
     const totalMonthly = active.reduce((s,d)=>s+d.installmentAmount,0);
     el.innerHTML=`<div class="section-header"><span class="section-title">🏦 Parcelas do mês</span><span class="text-muted text-sm">${Utils.formatCurrency(totalMonthly)}/mês</span></div>
     ${active.slice(0,4).map(d=>`<div class="recent-tx-item">
@@ -100,7 +100,8 @@ const Dashboard = {
     const txs=Store.get('transactions').slice(0,6), cats=Store.get('categories');
     if (!txs.length) { container.innerHTML=`<div class="empty-state" style="padding:30px"><div class="empty-icon">🧾</div><div class="empty-title">Nenhuma transação este mês</div></div>`; return; }
     container.innerHTML=txs.map(t=>{
-      const cat=cats.find(c=>c._id===t.categoryId);
+      // CORRIGIDO: c.id e t.category_id
+      const cat=cats.find(c=>String(c.id)===String(t.category_id));
       const icon=cat?cat.icon:(t.type==='income'?'💰':'💸');
       const bg=cat?cat.color+'22':(t.type==='income'?'#22c55e22':'#ef444422');
       return `<div class="recent-tx-item">

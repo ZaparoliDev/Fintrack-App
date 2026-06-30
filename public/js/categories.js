@@ -53,13 +53,14 @@ const Categories = {
       <div style="flex:1;min-width:0">
         <div class="cat-name">${c.name}${c.smart ? '<span class="smart-badge">SMART</span>' : ''}</div>
         <div class="cat-type">${c.type === 'income' ? 'Receita' : 'Despesa'}</div>
-        ${c.smart && c.smartDefaults ? `<div class="text-muted text-sm">${Utils.formatCurrency(c.smartDefaults.amount || 0)}</div>` : ''}
+        ${c.smart && c.smart_defaults ? `<div class="text-muted text-sm">${Utils.formatCurrency(c.smart_defaults.amount || 0)}</div>` : ''}
       </div>
       <div class="cat-actions">
-        <button class="icon-btn" onclick="Categories.openEdit('${c._id}')" title="Editar">✏️</button>
-        <button class="icon-btn danger" onclick="Categories.delete('${c._id}')" title="Excluir">🗑️</button>
+        <button class="icon-btn" onclick="Categories.openEdit('${c.id}')" title="Editar">✏️</button>
+        <button class="icon-btn danger" onclick="Categories.delete('${c.id}')" title="Excluir">🗑️</button>
       </div>
     </div>`;
+    // CORRIGIDO: c.id (era c._id), c.smart_defaults (era c.smartDefaults)
   },
 
   openCreate() {
@@ -76,7 +77,7 @@ const Categories = {
   },
 
   openEdit(id) {
-    const cat = Store.get('categories').find(c => c._id === id);
+    const cat = Store.get('categories').find(c => String(c.id) === String(id)); // CORRIGIDO: id
     if (!cat) return;
     this.editingId = id;
     this.isSmart = !!cat.smart;
@@ -88,10 +89,10 @@ const Categories = {
     this._renderColorPicker();
     this._renderIconPicker();
 
-    if (cat.smart && cat.smartDefaults) {
-      document.getElementById('smart-desc').value    = cat.smartDefaults.description || '';
-      document.getElementById('smart-amount').value  = cat.smartDefaults.amount || '';
-      document.getElementById('smart-note').value    = cat.smartDefaults.note || '';
+    if (cat.smart && cat.smart_defaults) { // CORRIGIDO: smart_defaults
+      document.getElementById('smart-desc').value    = cat.smart_defaults.description || '';
+      document.getElementById('smart-amount').value  = cat.smart_defaults.amount || '';
+      document.getElementById('smart-note').value    = cat.smart_defaults.note || '';
     }
     this._updateSmartUI();
     Modal.open('modal-cat');

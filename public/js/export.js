@@ -1,5 +1,4 @@
 // ===== EXPORT MODULE =====
-// PDF via Canvas (sem lib externa) + CSV nativo
 const Export = {
   format: 'pdf',
   selectedMonths: [],
@@ -11,7 +10,6 @@ const Export = {
     this._syncFormatUI();
     document.getElementById('export-overlay').classList.add('open');
 
-    // Carrega meses disponíveis
     const grid = document.getElementById('export-months-grid');
     grid.innerHTML = '<div class="loader"><div class="spinner"></div></div>';
     try {
@@ -78,13 +76,11 @@ const Export = {
     btn.disabled = true; btn.textContent = 'Gerando...';
 
     try {
-      // Busca transações de todos os meses selecionados
       const allTx = [];
       for (const { year, month } of this.selectedMonths) {
         const txs = await API.exportTransactions({ year, month });
         allTx.push(...txs);
       }
-      // Ordena por data
       allTx.sort((a, b) => new Date(a.date) - new Date(b.date));
 
       const cats = Store.get('categories');
@@ -103,11 +99,11 @@ const Export = {
     }
   },
 
-  // ─── CSV ───
   _generateCSV(txs, cats) {
     const header = ['Data','Descrição','Tipo','Categoria','Valor (R$)','Observação'];
     const rows   = txs.map(t => {
-      const cat  = cats.find(c => c._id === t.categoryId);
+      // CORRIGIDO: c.id e t.category_id
+      const cat  = cats.find(c => String(c.id) === String(t.category_id));
       const type = t.type === 'income' ? 'Receita' : 'Despesa';
       const date = new Date(t.date).toLocaleDateString('pt-BR');
       const val  = (t.type === 'expense' ? -t.amount : t.amount).toFixed(2).replace('.', ',');
@@ -121,14 +117,12 @@ const Export = {
     rows.push(`;;;"Total Despesas";"${totExpense.toFixed(2).replace('.', ',')}";`);
     rows.push(`;;;"Saldo";"${(totIncome-totExpense).toFixed(2).replace('.', ',')}";`);
 
-    const csv  = '\uFEFF' + [header.join(';'), ...rows].join('\n'); // BOM para Excel
+    const csv  = '\uFEFF' + [header.join(';'), ...rows].join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     this._download(blob, `fintrack-relatorio-${Date.now()}.csv`);
   },
 
-  // ─── PDF (Canvas nativo, sem libs) ───
   async _generatePDF(txs, cats) {
-    // Usa a Print API do browser via iframe oculto
     const user  = Store.get('user');
     const label = this.selectedMonths.map(({ year, month }) =>
       new Date(year, month-1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
@@ -137,10 +131,10 @@ const Export = {
     const totIncome  = txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
     const totExpense = txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
     const balance    = totIncome - totExpense;
-    const isLight    = document.documentElement.classList.contains('light');
 
     const rows = txs.map(t => {
-      const cat  = cats.find(c => c._id === t.categoryId);
+      // CORRIGIDO: c.id e t.category_id
+      const cat  = cats.find(c => String(c.id) === String(t.category_id));
       const date = new Date(t.date).toLocaleDateString('pt-BR');
       const cls  = t.type === 'income' ? 'income' : 'expense';
       const sign = t.type === 'income' ? '+' : '-';
@@ -162,77 +156,43 @@ const Export = {
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: Inter, sans-serif; background: #fff; color: #111827; font-size: 13px; padding: 40px; }
-
-  /* HEADER */
   .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 32px; padding-bottom: 20px; border-bottom: 2px solid #e5e7eb; }
   .logo-area { display: flex; align-items: center; gap: 12px; }
-  .logo-box {
-    width: 48px; height: 48px;
-    background: linear-gradient(135deg, #3b82f6, #a78bfa);
-    border-radius: 12px; display: flex; align-items: center; justify-content: center;
-    font-size: 24px; color: #fff;
-  }
+  .logo-box { width: 48px; height: 48px; background: linear-gradient(135deg, #3b82f6, #a78bfa); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; color: #fff; }
   .logo-name { font-size: 1.5rem; font-weight: 800; color: #111827; letter-spacing: -0.03em; }
   .logo-sub  { font-size: 0.75rem; color: #6b7280; margin-top: 2px; }
   .report-meta { text-align: right; }
   .report-meta-title { font-size: 0.9rem; font-weight: 700; color: #374151; }
   .report-meta-user  { font-size: 0.78rem; color: #9ca3af; margin-top: 3px; }
   .report-meta-date  { font-size: 0.72rem; color: #d1d5db; margin-top: 2px; }
-
-  /* PERIOD */
-  .period-banner {
-    background: linear-gradient(135deg, #1e3a8a, #3b82f6);
-    border-radius: 12px; padding: 16px 22px; margin-bottom: 24px; color: #fff;
-  }
+  .period-banner { background: linear-gradient(135deg, #1e3a8a, #3b82f6); border-radius: 12px; padding: 16px 22px; margin-bottom: 24px; color: #fff; }
   .period-label { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.6; margin-bottom: 4px; }
   .period-value { font-size: 1rem; font-weight: 700; }
-
-  /* SUMMARY */
   .summary { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 28px; }
   .sum-card { border: 1.5px solid #e5e7eb; border-radius: 10px; padding: 14px 16px; }
   .sum-label { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: #9ca3af; margin-bottom: 6px; }
   .sum-value { font-family: 'JetBrains Mono', monospace; font-size: 1.3rem; font-weight: 700; }
-  .sum-value.green { color: #16a34a; }
-  .sum-value.red   { color: #dc2626; }
-  .sum-value.blue  { color: #2563eb; }
-
-  /* TABLE */
+  .sum-value.green { color: #16a34a; } .sum-value.red { color: #dc2626; } .sum-value.blue { color: #2563eb; }
   .section-title { font-size: 0.85rem; font-weight: 700; color: #374151; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.06em; }
   table { width: 100%; border-collapse: collapse; }
   thead th { background: #f9fafb; padding: 9px 12px; text-align: left; font-size: 0.7rem; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 1.5px solid #e5e7eb; }
   tbody tr { border-bottom: 1px solid #f3f4f6; }
-  tbody tr:last-child { border-bottom: none; }
   td { padding: 9px 12px; vertical-align: middle; font-size: 0.8rem; }
   td small { color: #9ca3af; font-size: 0.72rem; }
   .badge { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 0.68rem; font-weight: 700; }
-  .badge-income  { background: #dcfce7; color: #16a34a; }
-  .badge-expense { background: #fee2e2; color: #dc2626; }
+  .badge-income { background: #dcfce7; color: #16a34a; } .badge-expense { background: #fee2e2; color: #dc2626; }
   .amount { font-family: 'JetBrains Mono', monospace; font-weight: 700; white-space: nowrap; }
-  .amount.income  { color: #16a34a; }
-  .amount.expense { color: #dc2626; }
-
-  /* FOOTER */
+  .amount.income { color: #16a34a; } .amount.expense { color: #dc2626; }
   .footer { margin-top: 32px; padding-top: 16px; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; }
   .footer-brand { font-size: 0.72rem; color: #d1d5db; font-weight: 600; }
-  .footer-page  { font-size: 0.72rem; color: #d1d5db; }
-
-  @media print {
-    body { padding: 20px; }
-    .no-print { display: none; }
-    thead { display: table-header-group; }
-    tr { page-break-inside: avoid; }
-  }
+  @media print { body { padding: 20px; } thead { display: table-header-group; } tr { page-break-inside: avoid; } }
 </style>
 </head>
 <body>
-
 <div class="header">
   <div class="logo-area">
     <div class="logo-box">💸</div>
-    <div>
-      <div class="logo-name">Fintrack</div>
-      <div class="logo-sub">Gestão Financeira Pessoal</div>
-    </div>
+    <div><div class="logo-name">Fintrack</div><div class="logo-sub">Gestão Financeira Pessoal</div></div>
   </div>
   <div class="report-meta">
     <div class="report-meta-title">Relatório de Transações</div>
@@ -240,46 +200,24 @@ const Export = {
     <div class="report-meta-date">Gerado em ${new Date().toLocaleString('pt-BR')}</div>
   </div>
 </div>
-
 <div class="period-banner">
   <div class="period-label">Período</div>
   <div class="period-value">${label}</div>
 </div>
-
 <div class="summary">
-  <div class="sum-card">
-    <div class="sum-label">Total Receitas</div>
-    <div class="sum-value green">${Utils.formatCurrency(totIncome)}</div>
-  </div>
-  <div class="sum-card">
-    <div class="sum-label">Total Despesas</div>
-    <div class="sum-value red">${Utils.formatCurrency(totExpense)}</div>
-  </div>
-  <div class="sum-card">
-    <div class="sum-label">Saldo do Período</div>
-    <div class="sum-value ${balance >= 0 ? 'green' : 'red'}">${Utils.formatCurrency(balance)}</div>
-  </div>
+  <div class="sum-card"><div class="sum-label">Total Receitas</div><div class="sum-value green">${Utils.formatCurrency(totIncome)}</div></div>
+  <div class="sum-card"><div class="sum-label">Total Despesas</div><div class="sum-value red">${Utils.formatCurrency(totExpense)}</div></div>
+  <div class="sum-card"><div class="sum-label">Saldo do Período</div><div class="sum-value ${balance >= 0 ? 'green' : 'red'}">${Utils.formatCurrency(balance)}</div></div>
 </div>
-
 <div class="section-title">${txs.length} Transações</div>
 <table>
-  <thead>
-    <tr>
-      <th>Data</th>
-      <th>Descrição</th>
-      <th>Tipo</th>
-      <th>Categoria</th>
-      <th>Valor</th>
-    </tr>
-  </thead>
+  <thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th>Categoria</th><th>Valor</th></tr></thead>
   <tbody>${rows}</tbody>
 </table>
-
 <div class="footer">
-  <div class="footer-brand">💸 Fintrack — fintrack.vercel.app</div>
+  <div class="footer-brand">💸 Fintrack</div>
   <div class="footer-page">Total: ${txs.length} transações · ${Utils.formatCurrency(totIncome)} receitas · ${Utils.formatCurrency(totExpense)} despesas</div>
 </div>
-
 <script>window.onload = () => { window.print(); window.onafterprint = () => window.close(); };<\/script>
 </body></html>`;
 

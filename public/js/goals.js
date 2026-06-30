@@ -35,25 +35,26 @@ const Goals = {
   },
 
   _goalCard(g) {
-    const pct  = Utils.pct(g.currentAmount, g.targetAmount);
+    // CORRIGIDO: current_amount e target_amount (snake_case do banco)
+    const pct  = Utils.pct(g.current_amount, g.target_amount);
     const days = Utils.daysLeft(g.deadline);
     const done = pct >= 100;
-    const remaining = Math.max(0, g.targetAmount - g.currentAmount);
+    const remaining = Math.max(0, g.target_amount - g.current_amount);
 
-    const deposits = (g.deposits || []).slice().reverse(); // mais recentes primeiro
+    const deposits = (g.deposits || []).slice().reverse();
     const depositHistory = deposits.length
       ? deposits.map((d, i) => {
-          const realIdx = (g.deposits.length - 1) - i; // índice real no array original
+          const realIdx = (g.deposits.length - 1) - i;
           return `<div class="deposit-entry">
             <span class="deposit-amount">+ ${Utils.formatCurrency(d.amount)}</span>
             <span class="deposit-note">${d.note || '—'}</span>
             <span class="deposit-date">${Utils.formatDate(d.date)}</span>
-            <button class="deposit-del" onclick="Goals.removeDeposit('${g._id}', ${realIdx})" title="Excluir depósito">✕</button>
-          </div>`;
+            <button class="deposit-del" onclick="Goals.removeDeposit('${g.id}', ${realIdx})" title="Excluir depósito">✕</button>
+          </div>`; // CORRIGIDO: g.id
         }).join('')
       : '<div class="text-muted text-sm" style="padding:6px 0">Nenhum depósito ainda.</div>';
 
-    return `<div class="goal-card" id="goal-card-${g._id}">
+    return `<div class="goal-card" id="goal-card-${g.id}">
       <div class="goal-header">
         <div class="flex gap-2" style="align-items:flex-start">
           <div class="goal-icon-wrap" style="background:${g.color}22">${g.icon}</div>
@@ -66,8 +67,8 @@ const Goals = {
           </div>
         </div>
         <div class="flex gap-2">
-          <button class="icon-btn" onclick="Goals.openEdit('${g._id}')" title="Editar">✏️</button>
-          <button class="icon-btn danger" onclick="Goals.delete('${g._id}')" title="Excluir">🗑️</button>
+          <button class="icon-btn" onclick="Goals.openEdit('${g.id}')" title="Editar">✏️</button>
+          <button class="icon-btn danger" onclick="Goals.delete('${g.id}')" title="Excluir">🗑️</button>
         </div>
       </div>
 
@@ -75,9 +76,9 @@ const Goals = {
         <div class="goal-progress-fill" style="width:${pct}%;background:linear-gradient(90deg,${g.color},${g.color}99)"></div>
       </div>
       <div class="goal-amounts">
-        <span class="goal-current" style="color:${g.color}">${Utils.formatCurrency(g.currentAmount)}</span>
+        <span class="goal-current" style="color:${g.color}">${Utils.formatCurrency(g.current_amount)}</span>
         <span class="goal-pct">${pct}%</span>
-        <span class="goal-target">${Utils.formatCurrency(g.targetAmount)}</span>
+        <span class="goal-target">${Utils.formatCurrency(g.target_amount)}</span>
       </div>
 
       ${!done
@@ -85,24 +86,24 @@ const Goals = {
         : `<div class="mt-1 text-sm" style="text-align:center;color:var(--green);font-weight:700">✓ Meta atingida!</div>`}
 
       <button class="btn btn-secondary btn-sm btn-full mt-2"
-        onclick="Goals.toggleDeposit('${g._id}')"
-        id="btn-deposit-${g._id}">
+        onclick="Goals.toggleDeposit('${g.id}')"
+        id="btn-deposit-${g.id}">
         💰 Adicionar valor
       </button>
 
-      <div class="goal-deposit-panel" id="deposit-panel-${g._id}">
+      <div class="goal-deposit-panel" id="deposit-panel-${g.id}">
         <div style="font-size:0.8rem;font-weight:700;margin-bottom:10px;color:var(--text-secondary)">NOVO DEPÓSITO</div>
         <div class="form-row" style="margin-bottom:8px">
           <div>
             <label class="form-label">Valor (R$)</label>
-            <input type="number" class="form-input" id="dep-amount-${g._id}" placeholder="0,00" min="0.01" step="0.01" />
+            <input type="number" class="form-input" id="dep-amount-${g.id}" placeholder="0,00" min="0.01" step="0.01" />
           </div>
           <div>
             <label class="form-label">Observação</label>
-            <input type="text" class="form-input" id="dep-note-${g._id}" placeholder="Opcional" />
+            <input type="text" class="form-input" id="dep-note-${g.id}" placeholder="Opcional" />
           </div>
         </div>
-        <button class="btn btn-primary btn-sm btn-full" onclick="Goals.saveDeposit('${g._id}')">Confirmar depósito</button>
+        <button class="btn btn-primary btn-sm btn-full" onclick="Goals.saveDeposit('${g.id}')">Confirmar depósito</button>
 
         <div class="divider" style="margin:12px 0 8px"></div>
         <div style="font-size:0.75rem;font-weight:700;color:var(--text-muted);margin-bottom:6px">
@@ -111,6 +112,7 @@ const Goals = {
         <div class="deposit-history">${depositHistory}</div>
       </div>
     </div>`;
+    // CORRIGIDO: todos g._id → g.id, g.currentAmount → g.current_amount, g.targetAmount → g.target_amount
   },
 
   async removeDeposit(goalId, depositIndex) {
@@ -161,13 +163,13 @@ const Goals = {
   },
 
   openEdit(id) {
-    const g = Store.get('goals').find(x => x._id === id);
+    const g = Store.get('goals').find(x => String(x.id) === String(id)); // CORRIGIDO: id
     if (!g) return;
     this.editingId = id;
     document.getElementById('modal-goal-title').textContent = 'Editar Meta';
     document.getElementById('goal-name').value = g.name;
-    document.getElementById('goal-target').value = g.targetAmount;
-    document.getElementById('goal-current').value = g.currentAmount;
+    document.getElementById('goal-target').value = g.target_amount;     // CORRIGIDO
+    document.getElementById('goal-current').value = g.current_amount;   // CORRIGIDO
     document.getElementById('goal-deadline').value = Utils.formatDateInput(g.deadline);
     this.selectedColor = g.color || GOAL_COLORS[0];
     this.selectedIcon  = g.icon  || GOAL_ICONS[0];

@@ -9,7 +9,6 @@ const Payday = {
     const monthKey = `${year}-${month}`;
     const todayKey = `${monthKey}-${day}`;
 
-    // Resolve o dia real (fixo ou Nº dia útil)
     const salaryDay = settings.salaryDayType === 'workday'
       ? Utils.getNthWorkday(year, month, settings.salaryDay||5)
       : (settings.salaryDay||5);
@@ -54,8 +53,16 @@ const Payday = {
       const today    = new Date();
       const monthKey = `${today.getFullYear()}-${today.getMonth()+1}`;
       const cats     = Store.get('categories');
+      // CORRIGIDO: c.id (era c._id)
       const cat      = cats.find(c=>c.type==='income'&&c.name.toLowerCase().includes(isSalary?'sal':'free'))||cats.find(c=>c.type==='income');
-      await API.createTransaction({ description:isSalary?'Salário':'Vale', amount, type:'income', categoryId:cat?._id||null, date:today.toISOString().slice(0,10), note:`CLT Premium — ${isSalary?'Salário':'Vale'}` });
+      await API.createTransaction({
+        description: isSalary?'Salário':'Vale',
+        amount,
+        type: 'income',
+        categoryId: cat?.id || null, // CORRIGIDO: id
+        date: today.toISOString().slice(0,10),
+        note: `CLT Premium — ${isSalary?'Salário':'Vale'}`
+      });
       const upd = isSalary ? { lastSalary:amount, salaryRegisteredMonth:monthKey } : { lastVale:amount, valeRegisteredMonth:monthKey };
       const saved = await API.saveSettings(upd);
       Settings._data = { ...Settings._data, ...saved };
