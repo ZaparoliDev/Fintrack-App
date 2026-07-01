@@ -303,6 +303,138 @@ async function debtDelete(req, res, user, id) {
   res.json({ success: true });
 }
 
+// ── PROVISIONED DEBTS ────────────────────────────
+async function provDebtList(req, res, user) {
+  const db = getDb();
+  const { data, error } = await db.from('provisioned_debts').select('*').eq('user_id',user.id).eq('active',true).order('due_day',{ascending:true});
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+}
+
+async function provDebtCreate(req, res, user) {
+  const { name, amount, dueDay, icon, color } = req.body;
+  if (!name||!amount||!dueDay) return res.status(400).json({ error: 'Nome, valor e dia de vencimento são obrigatórios.' });
+  if (+dueDay<1||+dueDay>28) return res.status(400).json({ error: 'Dia de vencimento deve ser entre 1 e 28.' });
+  const db = getDb();
+  const { data, error } = await db.from('provisioned_debts').insert({
+    user_id:user.id, name:name.trim(), amount:+amount, due_day:+dueDay,
+    icon:icon||'📌', color:color||'#f97316', active:true
+  }).select().single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.status(201).json(data);
+}
+
+async function provDebtUpdate(req, res, user, id) {
+  const db = getDb();
+  const u = { updated_at: new Date().toISOString() };
+  const map = { name:'name', amount:'amount', dueDay:'due_day', icon:'icon', color:'color', active:'active' };
+  for (const [k,col] of Object.entries(map)) if (req.body[k]!==undefined) u[col]=req.body[k];
+  const { data, error } = await db.from('provisioned_debts').update(u).eq('id',id).eq('user_id',user.id).select().single();
+  if (error) return res.status(500).json({ error: error.message });
+  if (!data) return res.status(404).json({ error: 'Dívida provisionada não encontrada.' });
+  res.json(data);
+}
+
+async function provDebtDelete(req, res, user, id) {
+  const db = getDb();
+  const { error } = await db.from('provisioned_debts').delete().eq('id',id).eq('user_id',user.id);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ success: true });
+}
+
+// Garante (ou busca) a categoria automática "Contas Fixas" do usuário
+async function ensureFixedBillsCategory(db, userId) {
+  const { data: existing } = await db.from('categories').select('id').eq('user_id',userId).eq('name','Contas Fixas').maybeSingle();
+  if (existing) return existing.id;
+  const { data, error } = await db.from('categories').insert({
+    user_id:userId, name:'Contas Fixas', icon:'📌', color:'#f97316', type:'expense', smart:false
+  }).select().single();
+  if (error) throw new Error(error.message);
+  return data.id;
+}
+
+// Retorna a lista de provisionadas do mês, já com status calculado
+// (pending | overdue | paid) e cruzando com provisioned_debt_payments.
+async function provDebtMonthList(req, res, user) {
+  const { month, year } = req.query;
+  const m = +month || new Date().getMonth()+1;
+  const y = +year  || new Date().getFullYear();
+  const db = getDb();
+
+  const { data: debts, error } = await db.from('provisioned_debts').select('*').eq('user_id',user.id).eq('active',true).order('due_day',{ascending:true});
+  if (error) return res.status(500).json({ error: error.message });
+
+  const { data: payments } = await db.from('provisioned_debt_payments').select('*').eq('user_id',user.id).eq('year',y).eq('month',m);
+  const paymentMap = {};
+  for (const p of (payments||[])) paymentMap[p.provisioned_debt_id] = p;
+
+  const today = new Date();
+  const isCurrentOrPastMonth = (y < today.getFullYear()) || (y===today.getFullYear() && m<=today.getMonth()+1);
+  const todayDay = today.getDate();
+
+  const result = (debts||[]).map(d => {
+    const payment = paymentMap[d.id];
+    let status = 'pending';
+    if (payment?.status === 'paid') status = 'paid';
+    else if (payment?.status === 'skipped') status = 'skipped';
+    else if (isCurrentOrPastMonth && y===today.getFullYear() && m===today.getMonth()+1 && todayDay > d.due_day) status = 'overdue';
+    else if (y < today.getFullYear() || (y===today.getFullYear() && m < today.getMonth()+1)) status = 'overdue'; // mês totalmente passado sem pagamento
+    return {
+      id: d.id, name: d.name, amount: +d.amount, dueDay: d.due_day,
+      icon: d.icon, color: d.color, status,
+      paidAt: payment?.paid_at || null,
+      transactionId: payment?.transaction_id || null
+    };
+  });
+  res.json(result);
+}
+
+async function provDebtMarkPaid(req, res, user, id) {
+  const { month, year, date } = req.body;
+  const m = +month || new Date().getMonth()+1;
+  const y = +year  || new Date().getFullYear();
+  const db = getDb();
+
+  const { data: debt } = await db.from('provisioned_debts').select('*').eq('id',id).eq('user_id',user.id).single();
+  if (!debt) return res.status(404).json({ error: 'Dívida provisionada não encontrada.' });
+
+  const catId = await ensureFixedBillsCategory(db, user.id);
+  const payDate = date || new Date().toISOString().slice(0,10);
+
+  const { data: tx, error: txErr } = await db.from('transactions').insert({
+    user_id: user.id, description: debt.name, amount: debt.amount, type: 'expense',
+    category_id: catId, date: payDate, note: 'Dívida Provisionada',
+    created_at: new Date().toISOString()
+  }).select().single();
+  if (txErr) return res.status(500).json({ error: txErr.message });
+
+  const { data: payment, error: payErr } = await db.from('provisioned_debt_payments')
+    .upsert({
+      provisioned_debt_id: id, user_id: user.id, year: y, month: m,
+      status: 'paid', transaction_id: tx.id, paid_at: new Date().toISOString()
+    }, { onConflict: 'provisioned_debt_id,year,month' })
+    .select().single();
+  if (payErr) return res.status(500).json({ error: payErr.message });
+
+  res.json({ payment, transaction: tx });
+}
+
+async function provDebtMarkUnpaid(req, res, user, id) {
+  const { month, year } = req.body;
+  const m = +month || new Date().getMonth()+1;
+  const y = +year  || new Date().getFullYear();
+  const db = getDb();
+
+  const { data: existing } = await db.from('provisioned_debt_payments').select('*').eq('provisioned_debt_id',id).eq('user_id',user.id).eq('year',y).eq('month',m).maybeSingle();
+  if (existing?.transaction_id) {
+    await db.from('transactions').delete().eq('id', existing.transaction_id).eq('user_id', user.id);
+  }
+  if (existing) {
+    await db.from('provisioned_debt_payments').delete().eq('id', existing.id);
+  }
+  res.json({ success: true });
+}
+
 // ── REPORTS ───────────────────────────────────────
 async function reportSummary(req, res, user) {
   const { month, year } = req.query;
@@ -311,18 +443,29 @@ async function reportSummary(req, res, user) {
   const lastDay = String(lastDayOfMonth(y, m)).padStart(2,'0');
   const start=`${y}-${m}-01`, end=`${y}-${m}-${lastDay}`;
   const db = getDb();
-  const [{ data: txs },{ data: debts },{ data: allTxsUpToMonth }] = await Promise.all([
+  const [{ data: txs },{ data: debts },{ data: allTxsUntilEnd },{ data: provDebts }] = await Promise.all([
     db.from('transactions').select('*').eq('user_id',user.id).gte('date',start).lte('date',end),
     db.from('debts').select('*').eq('user_id',user.id).eq('active',true),
-    // Saldo real = acumulado de TODAS as transações desde o início até o fim do mês selecionado,
-    // não apenas as do mês corrente. Isso evita que o saldo "zere" ao trocar de mês.
-    db.from('transactions').select('amount,type').eq('user_id',user.id).lte('date',end)
+    // Saldo acumulado: todas as transações desde o início até o fim do mês selecionado
+    db.from('transactions').select('amount,type').eq('user_id',user.id).lte('date',end),
+    db.from('provisioned_debts').select('*').eq('user_id',user.id).eq('active',true)
   ]);
   const income  = (txs||[]).filter(t=>t.type==='income').reduce((s,t)=>s+(+t.amount),0);
   const expense = (txs||[]).filter(t=>t.type==='expense').reduce((s,t)=>s+(+t.amount),0);
-  const totalIncomeAccum  = (allTxsUpToMonth||[]).filter(t=>t.type==='income').reduce((s,t)=>s+(+t.amount),0);
-  const totalExpenseAccum = (allTxsUpToMonth||[]).filter(t=>t.type==='expense').reduce((s,t)=>s+(+t.amount),0);
-  const balance = totalIncomeAccum - totalExpenseAccum;
+  const accumulatedIncome  = (allTxsUntilEnd||[]).filter(t=>t.type==='income').reduce((s,t)=>s+(+t.amount),0);
+  const accumulatedExpense = (allTxsUntilEnd||[]).filter(t=>t.type==='expense').reduce((s,t)=>s+(+t.amount),0);
+  const accumulatedBalance = accumulatedIncome - accumulatedExpense;
+
+  // Provisionadas ainda não pagas neste mês (pending ou overdue) → usadas
+  // para calcular o "saldo projetado" (o que ainda vai sair da conta).
+  let provisionedPending = 0;
+  if (provDebts?.length) {
+    const { data: payments } = await db.from('provisioned_debt_payments').select('provisioned_debt_id,status').eq('user_id',user.id).eq('year',+y).eq('month',+m);
+    const paidIds = new Set((payments||[]).filter(p=>p.status==='paid').map(p=>p.provisioned_debt_id));
+    provisionedPending = provDebts.filter(d=>!paidIds.has(d.id)).reduce((s,d)=>s+(+d.amount),0);
+  }
+  const projectedBalance = accumulatedBalance - provisionedPending;
+
   const byCategory = {};
   for (const t of (txs||[])) {
     const k=`${t.category_id||'null'}_${t.type}`;
@@ -342,7 +485,7 @@ async function reportSummary(req, res, user) {
     installmentAmount:d.installment_amount, paidInstallments:d.paid_installments,
     totalInstallments:d.total_installments, remaining:d.total_installments-d.paid_installments
   }));
-  res.json({ month:+m, year:+y, income, expense, balance, byCategory:Object.values(byCategory), monthly:Object.values(monthly), debtInstallments });
+  res.json({ month:+m, year:+y, income, expense, balance:accumulatedBalance, monthBalance:income-expense, projectedBalance, provisionedPending, byCategory:Object.values(byCategory), monthly:Object.values(monthly), debtInstallments });
 }
 
 async function reportMonths(req, res, user) {
@@ -417,6 +560,13 @@ export default async function handler(req, res) {
     if (resource==='debts') {
       if (!idOrSub) { if (method==='GET') return await debtList(req,res,user); if (method==='POST') return await debtCreate(req,res,user); }
       else { if (method==='PUT') return await debtUpdate(req,res,user,idOrSub); if (method==='DELETE') return await debtDelete(req,res,user,idOrSub); }
+    }
+    if (resource==='provisioned-debts') {
+      if (idOrSub==='month') return await provDebtMonthList(req,res,user);
+      if (!idOrSub) { if (method==='GET') return await provDebtList(req,res,user); if (method==='POST') return await provDebtCreate(req,res,user); }
+      else if (segs[2]==='pay'   && method==='POST') return await provDebtMarkPaid(req,res,user,idOrSub);
+      else if (segs[2]==='unpay' && method==='POST') return await provDebtMarkUnpaid(req,res,user,idOrSub);
+      else { if (method==='PUT') return await provDebtUpdate(req,res,user,idOrSub); if (method==='DELETE') return await provDebtDelete(req,res,user,idOrSub); }
     }
     if (resource==='reports') {
       if (idOrSub==='summary') return await reportSummary(req,res,user);
