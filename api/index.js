@@ -311,12 +311,18 @@ async function reportSummary(req, res, user) {
   const lastDay = String(lastDayOfMonth(y, m)).padStart(2,'0');
   const start=`${y}-${m}-01`, end=`${y}-${m}-${lastDay}`;
   const db = getDb();
-  const [{ data: txs },{ data: debts }] = await Promise.all([
+  const [{ data: txs },{ data: debts },{ data: allTxsUpToMonth }] = await Promise.all([
     db.from('transactions').select('*').eq('user_id',user.id).gte('date',start).lte('date',end),
-    db.from('debts').select('*').eq('user_id',user.id).eq('active',true)
+    db.from('debts').select('*').eq('user_id',user.id).eq('active',true),
+    // Saldo real = acumulado de TODAS as transações desde o início até o fim do mês selecionado,
+    // não apenas as do mês corrente. Isso evita que o saldo "zere" ao trocar de mês.
+    db.from('transactions').select('amount,type').eq('user_id',user.id).lte('date',end)
   ]);
   const income  = (txs||[]).filter(t=>t.type==='income').reduce((s,t)=>s+(+t.amount),0);
   const expense = (txs||[]).filter(t=>t.type==='expense').reduce((s,t)=>s+(+t.amount),0);
+  const totalIncomeAccum  = (allTxsUpToMonth||[]).filter(t=>t.type==='income').reduce((s,t)=>s+(+t.amount),0);
+  const totalExpenseAccum = (allTxsUpToMonth||[]).filter(t=>t.type==='expense').reduce((s,t)=>s+(+t.amount),0);
+  const balance = totalIncomeAccum - totalExpenseAccum;
   const byCategory = {};
   for (const t of (txs||[])) {
     const k=`${t.category_id||'null'}_${t.type}`;
@@ -336,7 +342,7 @@ async function reportSummary(req, res, user) {
     installmentAmount:d.installment_amount, paidInstallments:d.paid_installments,
     totalInstallments:d.total_installments, remaining:d.total_installments-d.paid_installments
   }));
-  res.json({ month:+m, year:+y, income, expense, balance:income-expense, byCategory:Object.values(byCategory), monthly:Object.values(monthly), debtInstallments });
+  res.json({ month:+m, year:+y, income, expense, balance, byCategory:Object.values(byCategory), monthly:Object.values(monthly), debtInstallments });
 }
 
 async function reportMonths(req, res, user) {
