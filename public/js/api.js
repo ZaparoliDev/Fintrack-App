@@ -41,6 +41,14 @@ const API = {
   updateDebt(i,d)       { return this.put(`/debts/${i}`, d); },
   deleteDebt(i)         { return this.delete(`/debts/${i}`); },
 
+  getProvisionedDebts()        { return this.get('/provisioned-debts'); },
+  getProvisionedDebtsMonth(q)  { return this.get('/provisioned-debts/month' + (q ? '?'+new URLSearchParams(q) : '')); },
+  createProvisionedDebt(d)     { return this.post('/provisioned-debts', d); },
+  updateProvisionedDebt(i,d)   { return this.put(`/provisioned-debts/${i}`, d); },
+  deleteProvisionedDebt(i)     { return this.delete(`/provisioned-debts/${i}`); },
+  payProvisionedDebt(i,d)      { return this.post(`/provisioned-debts/${i}/pay`, d); },
+  unpayProvisionedDebt(i,d)    { return this.post(`/provisioned-debts/${i}/unpay`, d); },
+
   getSummary(q)         { return this.get('/reports/summary' + (q ? '?'+new URLSearchParams(q) : '')); },
   getAvailableMonths()  { return this.get('/reports/months'); },
 

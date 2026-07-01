@@ -30,6 +30,7 @@ const App = {
       Categories.load(), Transactions.load(), Goals.load(), Debts.load(),
       API.getSettings().catch(()=>({}))
     ]);
+    await ProvisionedDebts.load();
     Settings.load(settings);
     Store.set('settings',settings);
     Theme.applyFromSettings(settings);
@@ -71,10 +72,12 @@ const App = {
     this.updateMonthLabel();
     Utils.showPageLoader('Carregando...');
     await Transactions.load();
+    await ProvisionedDebts.load();
     Utils.hidePageLoader();
     if(this.currentPage==='transactions') Transactions.render();
     if(this.currentPage==='dashboard')    Dashboard.refresh();
     if(this.currentPage==='reports')      Reports.load();
+    if(this.currentPage==='provisioned-debts') ProvisionedDebts.render();
   },
   updateMonthLabel() {
     document.getElementById('month-label').textContent=Utils.monthName(Store.get('currentMonth'),Store.get('currentYear'));
@@ -82,7 +85,7 @@ const App = {
   navigate(page) {
     this.currentPage=page;
     document.querySelectorAll('.nav-item[data-page]').forEach(el=>el.classList.toggle('active',el.dataset.page===page));
-    const titles={ dashboard:'📊 Dashboard', transactions:'💳 Transações', categories:'🏷️ Categorias', goals:'🎯 Metas', reports:'📈 Relatórios', settings:'⚙️ Configurações', debts:'🏦 Dívidas de Crédito' };
+    const titles={ dashboard:'📊 Dashboard', transactions:'💳 Transações', categories:'🏷️ Categorias', goals:'🎯 Metas', reports:'📈 Relatórios', settings:'⚙️ Configurações', debts:'🏦 Dívidas de Crédito', 'provisioned-debts':'📌 Dívidas Provisionadas' };
     document.getElementById('topbar-title').textContent=titles[page]||page;
     window.scrollTo({ top:0, behavior:'instant' });
     document.querySelectorAll('.page').forEach(p=>p.classList.add('hidden'));
@@ -94,6 +97,7 @@ const App = {
     if(page==='reports')      Reports.load();
     if(page==='settings')     Settings.render();
     if(page==='debts')        Debts.render();
+    if(page==='provisioned-debts') ProvisionedDebts.render();
   }
 };
 
@@ -106,6 +110,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('form-cat')?.addEventListener('submit',  e=>Categories.save(e));
   document.getElementById('form-goal')?.addEventListener('submit', e=>Goals.save(e));
   document.getElementById('form-debt')?.addEventListener('submit', e=>Debts.save(e));
+  document.getElementById('form-provdebt')?.addEventListener('submit', e=>ProvisionedDebts.save(e));
   document.getElementById('btn-income')?.addEventListener('click',  ()=>Transactions.setType('income'));
   document.getElementById('btn-expense')?.addEventListener('click', ()=>Transactions.setType('expense'));
   App.init();

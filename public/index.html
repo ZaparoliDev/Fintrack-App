@@ -63,6 +63,7 @@
       <div class="nav-item active" data-page="dashboard"><span class="nav-icon">📊</span>Dashboard</div>
       <div class="nav-item" data-page="transactions"><span class="nav-icon">💳</span>Transações</div>
       <div class="nav-item" data-page="debts"><span class="nav-icon">🏦</span>Dívidas</div>
+      <div class="nav-item" data-page="provisioned-debts"><span class="nav-icon">📌</span>Dívidas Provisionadas</div>
       <div class="nav-item" data-page="categories"><span class="nav-icon">🏷️</span>Categorias</div>
       <div class="nav-item" data-page="goals"><span class="nav-icon">🎯</span>Metas</div>
       <div class="nav-item" data-page="reports"><span class="nav-icon">📈</span>Relatórios</div>
@@ -104,6 +105,11 @@
         <div class="balance-hero">
           <div class="balance-hero-label">Saldo do mês</div>
           <div class="balance-hero-value" id="dash-balance-hero">R$ 0,00</div>
+          <div class="balance-projected-row hidden" id="dash-projected-row">
+            <span class="balance-projected-label">Projetado (com contas fixas)</span>
+            <span class="balance-projected-value" id="dash-projected-value">R$ 0,00</span>
+            <button class="balance-eye-btn" id="dash-projected-eye" onclick="Dashboard.toggleProjectedVisibility()" title="Mostrar/ocultar">👁️</button>
+          </div>
           <div class="balance-row">
             <div class="balance-mini"><span class="balance-mini-label">Receitas</span><span class="balance-mini-value inc" id="dash-income-mini">R$ 0,00</span></div>
             <div class="balance-mini"><span class="balance-mini-label">Despesas</span><span class="balance-mini-value exp" id="dash-expense-mini">R$ 0,00</span></div>
@@ -128,6 +134,7 @@
         <canvas id="chart-monthly" height="90"></canvas>
       </div>
       <div class="card" id="dash-debt-widget" style="display:none;margin-bottom:16px"></div>
+      <div class="card" id="dash-provdebt-widget" style="display:none;margin-bottom:16px"></div>
       <div class="card">
         <div class="section-header"><span class="section-title">Últimas transações</span><button class="btn btn-ghost btn-sm" onclick="App.navigate('transactions')">Ver todas →</button></div>
         <div id="dash-recent"></div>
@@ -157,6 +164,16 @@
         <button class="btn btn-primary btn-sm" onclick="Debts.openCreate()">+ Nova dívida</button>
       </div>
       <div id="debts-list"></div>
+    </div>
+
+    <!-- PROVISIONED DEBTS -->
+    <div id="page-provisioned-debts" class="page page-content hidden">
+      <div class="section-header" style="margin-bottom:20px">
+        <div><div class="section-title">Dívidas Provisionadas</div><div class="section-sub">Contas fixas recorrentes (Wi-Fi, aluguel, etc). Debitam do saldo somente após marcadas como pagas.</div></div>
+        <button class="btn btn-primary btn-sm" onclick="ProvisionedDebts.openCreate()">+ Nova conta fixa</button>
+      </div>
+      <div id="provdebts-summary" style="margin-bottom:20px"></div>
+      <div id="provdebts-list"></div>
     </div>
 
     <!-- CATEGORIES -->
@@ -371,6 +388,26 @@
   </div>
 </div>
 
+<!-- Provisioned Debt -->
+<div class="modal-overlay" id="modal-provdebt">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title" id="modal-provdebt-title">Nova Dívida Provisionada</span><button class="modal-close" onclick="Modal.close('modal-provdebt')">✕</button></div>
+    <div class="modal-body">
+      <form id="form-provdebt">
+        <div class="form-group"><label class="form-label">Nome</label><input id="provdebt-name" type="text" class="form-input" placeholder="Ex: Conta de Wi-Fi, Aluguel..." required/></div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Valor (R$)</label><input id="provdebt-amount" type="number" class="form-input" placeholder="0,00" step="0.01" min="0.01" required/></div>
+          <div class="form-group"><label class="form-label">Dia do vencimento</label><input id="provdebt-day" type="number" class="form-input" placeholder="10" min="1" max="28" required/></div>
+        </div>
+        <p class="text-muted text-sm mb-2">Repete automaticamente todo mês. O valor só entra no saldo depois de marcado como pago.</p>
+        <div class="form-group"><label class="form-label">Ícone</label><div id="provdebt-icon-picker" class="flex" style="flex-wrap:wrap;gap:4px"></div></div>
+        <div class="form-group"><label class="form-label">Cor</label><div id="provdebt-color-picker" class="color-picker-row"></div></div>
+        <button type="submit" class="btn btn-primary btn-full mt-3">Salvar</button>
+      </form>
+    </div>
+  </div>
+</div>
+
 <!-- Import -->
 <div class="import-overlay" id="import-overlay">
   <div class="import-card">
@@ -468,6 +505,7 @@
 <script src="/js/categories.js"></script>
 <script src="/js/goals.js"></script>
 <script src="/js/debts.js"></script>
+<script src="/js/provisioned-debts.js"></script>
 <script src="/js/reports.js"></script>
 <script src="/js/payday.js"></script>
 <script src="/js/settings.js"></script>

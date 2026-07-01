@@ -1,10 +1,18 @@
 const Dashboard = {
+  _lastSummary: null,
+
+  toggleProjectedVisibility() {
+    Store.set('hideProjectedBalance', !Store.get('hideProjectedBalance'));
+    if (this._lastSummary) this.renderHero(this._lastSummary);
+  },
+
   async refresh() {
     const summary = await this._loadSummary();
     this.renderHero(summary);
     this.renderRecentTransactions();
     this.renderChart(summary?.monthly || []);
     this.renderDebtWidget(summary?.debtInstallments || []);
+    this.renderProvDebtWidget();
   },
 
   async _loadSummary() {
@@ -16,9 +24,11 @@ const Dashboard = {
   },
 
   renderHero(data) {
+    this._lastSummary = data;
     const income  = data?.income  || 0;
     const expense = data?.expense || 0;
-    const balance = data?.balance || 0;
+    const balance = data?.balance || 0;       // acumulado (Dashboard)
+    const monthBalance = data?.monthBalance ?? balance; // só do mês (Relatórios)
     const txs     = Store.get('transactions');
     const goals   = Store.get('goals');
     const debts   = Store.get('debts');
@@ -26,6 +36,24 @@ const Dashboard = {
 
     const heroVal = el('dash-balance-hero');
     if (heroVal) { heroVal.textContent = Utils.formatCurrency(balance); heroVal.className = 'balance-hero-value'+(balance<0?' negative':''); }
+
+    // Saldo projetado (acumulado - provisionadas pendentes/atrasadas do mês)
+    const projected = data?.projectedBalance;
+    const provPending = data?.provisionedPending || 0;
+    const projRow = el('dash-projected-row');
+    if (projRow) {
+      if (provPending > 0) {
+        projRow.classList.remove('hidden');
+        const hidden = Store.get('hideProjectedBalance');
+        const valEl = el('dash-projected-value');
+        if (valEl) valEl.textContent = hidden ? '••••••' : Utils.formatCurrency(projected);
+        const eyeBtn = el('dash-projected-eye');
+        if (eyeBtn) eyeBtn.textContent = hidden ? '🙈' : '👁️';
+      } else {
+        projRow.classList.add('hidden');
+      }
+    }
+
     if (el('dash-income-mini'))  el('dash-income-mini').textContent  = Utils.formatCurrency(income);
     if (el('dash-expense-mini')) el('dash-expense-mini').textContent = Utils.formatCurrency(expense);
     if (el('dash-tx-count'))     el('dash-tx-count').textContent     = txs.length;
@@ -45,7 +73,7 @@ const Dashboard = {
     const set = (id, val, cls) => { const e=el(id); if(!e)return; e.textContent=val; if(cls)e.className=cls; };
     set('rep-income-r',  Utils.formatCurrency(income));
     set('rep-expense-r', Utils.formatCurrency(expense));
-    set('rep-balance-r', Utils.formatCurrency(balance), 'stat-value '+(balance>=0?'green':'red'));
+    set('rep-balance-r', Utils.formatCurrency(monthBalance), 'stat-value '+(monthBalance>=0?'green':'red'));
     const rate = income>0 ? Math.round((expense/income)*100) : 0;
     set('rep-rate',    rate+'%', 'stat-value '+(rate>100?'red':rate>80?'amber':'green'));
     set('rep-savings', Utils.formatCurrency(Math.max(0, income-expense)));
@@ -92,6 +120,31 @@ const Dashboard = {
       <div class="recent-tx-right"><div class="recent-tx-amount tx-amount expense">- ${Utils.formatCurrency(d.installmentAmount)}</div>
         <div class="recent-tx-date">${d.remaining} restante${d.remaining!==1?'s':''}</div></div>
     </div>`).join('')}`;
+  },
+
+  renderProvDebtWidget() {
+    const el = document.getElementById('dash-provdebt-widget');
+    if (!el) return;
+    const list = (ProvisionedDebts.monthList || []).filter(d => d.status !== 'paid');
+    if (!list.length) { el.style.display = 'none'; return; }
+    el.style.display = 'block';
+    const total = list.reduce((s,d)=>s+d.amount,0);
+    el.innerHTML = `<div class="section-header"><span class="section-title">📌 Contas fixas do mês</span><span class="text-muted text-sm">${Utils.formatCurrency(total)} a pagar</span></div>
+    ${list.slice(0,4).map(d => {
+      const isOverdue = d.status === 'overdue';
+      return `<div class="recent-tx-item">
+        <div class="tx-icon" style="background:${d.color}22;flex-shrink:0;opacity:${isOverdue?1:0.6}">${d.icon}</div>
+        <div style="flex:1;min-width:0">
+          <div class="tx-description">${d.name} ${isOverdue ? '<span class="smart-badge" style="background:var(--red-dim);color:var(--red)">ATRASADA</span>' : ''}</div>
+          <div class="text-muted text-sm">Vence dia ${d.dueDay}</div>
+        </div>
+        <div class="recent-tx-right">
+          <div class="recent-tx-amount tx-amount expense" style="opacity:${isOverdue?1:0.6}">- ${Utils.formatCurrency(d.amount)}</div>
+          <button class="icon-btn" style="color:var(--green)" onclick="ProvisionedDebts.pay('${d.id}')" title="Marcar como paga">✓</button>
+        </div>
+      </div>`;
+    }).join('')}
+    <button class="btn btn-ghost btn-sm btn-full mt-2" onclick="App.navigate('provisioned-debts')">Ver todas →</button>`;
   },
 
   renderRecentTransactions() {
